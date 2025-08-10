@@ -1,0 +1,6 @@
+{
+  "name": "Air Dome system",
+  "description": "A comprehensive monitoring and control dashboard for Air Dome structures. It provides real-time data on 13 critical parameters, alert management, remote control functions, and AI-powered analysis to ensure structural integrity, safety, and operational efficiency.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}

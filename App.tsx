@@ -1,0 +1,362 @@
+
+import React, { useState, useEffect } from 'react';
+import { AppContextProvider } from './context/AppContext';
+import { AuthContextProvider, useAuth } from './context/AuthContext';
+import { Sidebar } from './components/Sidebar';
+import { Header } from './components/Header';
+import { Dashboard } from './components/Dashboard';
+import { Alerts } from './components/Alerts';
+import { Reports } from './components/Reports';
+import { Settings } from './components/Settings';
+import { Users } from './components/Users';
+import type { View, FanSet, LightingState } from './types';
+import { useAppContext } from './context/AppContext';
+import { FanControlCard } from './components/FanControlCard';
+import { BulbIcon, ShutdownIcon, ExclamationTriangleIcon, CheckCircleIcon, SpinnerIcon } from './components/icons/MetricIcons';
+import { fetchFanSets, updateFanSet, fetchLightingState, updateLightingState } from './services/geminiService';
+import { LoginPage } from './components/LoginPage';
+import RegistrationPage from './components/RegistrationPage';
+
+
+// --- Components for separated control views ---
+
+const Ventilation: React.FC = () => {
+    const { t } = useAppContext();
+    const { authenticatedFetch } = useAuth();
+    const [fanSets, setFanSets] = useState<FanSet[] | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadFanSets = async () => {
+            setIsLoading(true);
+            const data = await fetchFanSets({ authenticatedFetch });
+            setFanSets(data);
+            setIsLoading(false);
+        };
+        loadFanSets();
+    }, [authenticatedFetch]);
+
+    const handleFanUpdate = async (id: string, updates: Partial<Omit<FanSet, 'id' | 'name'>>) => {
+        // Optimistic update
+        setFanSets(prevFanSets => {
+            if (!prevFanSets) return null;
+            return prevFanSets.map(fanSet =>
+                fanSet.id === id ? { ...fanSet, ...updates } : fanSet
+            )
+        });
+        
+        try {
+            await updateFanSet(id, updates, { authenticatedFetch });
+        } catch (error) {
+            console.error("Failed to update fan set:", error);
+            // Revert state on error
+            const data = await fetchFanSets({ authenticatedFetch });
+            setFanSets(data);
+        }
+    };
+
+    if (isLoading || !fanSets) {
+        return <div className="flex justify-center items-center h-64"><SpinnerIcon className="h-10 w-10 text-brand-accent animate-spin" /></div>;
+    }
+
+    return (
+        <div className="space-y-8">
+            <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-brand-text mb-4 border-b border-gray-200 dark:border-brand-dark-lightest pb-2">
+                    {t('fan_set_control')}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {fanSets.map(fs => (
+                        <FanControlCard key={fs.id} fanSet={fs} onUpdate={handleFanUpdate} />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const LightingControlCard: React.FC<{
+  lightsOn: boolean;
+  onPowerToggle: () => void;
+  brightness: number;
+  onBrightnessChange: (value: number) => void;
+}> = ({ lightsOn, onPowerToggle, brightness, onBrightnessChange }) => {
+    const { t } = useAppContext();
+
+    return (
+        <div className="bg-white dark:bg-brand-dark-light rounded-lg shadow-lg p-4 flex flex-col space-y-4">
+            {/* Header */}
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-8">
+                    <BulbIcon className={`h-20 w-20 transition-colors ${lightsOn ? 'text-yellow-400' : 'text-gray-400 dark:text-brand-dark-lightest'}`}/>
+                    <h2 className="text-3xl font-semibold text-gray-800 dark:text-brand-text">{t('main_lighting')} (Demo)</h2>
+                </div>
+                <span className={`px-2 py-1 text-xs font-bold rounded-full ${!lightsOn ? 'bg-gray-500 text-white' : 'bg-status-ok text-white'}`}>
+                    {!lightsOn ? t('off') : t('on')}
+                </span>
+            </div>
+
+            {/* Controls */}
+            <div className="space-y-4">
+                <div className="space-y-1">
+                    <div className="flex justify-between items-baseline text-sm">
+                        <span className="font-medium text-gray-600 dark:text-brand-text-dim">{t('brightness')}</span>
+                        <span className="font-bold text-gray-800 dark:text-brand-text">{brightness}%</span>
+                    </div>
+                    <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={brightness}
+                        onChange={(e) => onBrightnessChange(Number(e.target.value))}
+                        disabled={!lightsOn}
+                        className={`w-full h-2 bg-gray-200 dark:bg-brand-dark-lightest rounded-lg appearance-none cursor-pointer transition-opacity disabled:opacity-50 disabled:cursor-not-allowed ${lightsOn ? 'accent-brand-accent' : ''}`}
+                    />
+                </div>
+            </div>
+            
+            {/* Footer Action */}
+            <div className="pt-2">
+                 <button
+                    onClick={onPowerToggle}
+                    className={`w-full text-white font-bold py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 ${!lightsOn ? 'bg-status-ok hover:bg-green-600' : 'bg-status-danger hover:bg-red-600'}`}
+                >
+                    <ShutdownIcon className="h-5 w-5" />
+                    {!lightsOn ? t('power_on_lights') : t('power_off_lights')}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+
+const Lighting: React.FC = () => {
+    const { t } = useAppContext();
+    const { authenticatedFetch } = useAuth();
+    const [lightingState, setLightingState] = useState<LightingState | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        const loadState = async () => {
+            setIsLoading(true);
+            const data = await fetchLightingState({ authenticatedFetch });
+            setLightingState(data);
+            setIsLoading(false);
+        };
+        loadState();
+    }, [authenticatedFetch]);
+
+    const handleUpdate = async (updates: Partial<LightingState>) => {
+        if (!lightingState) return;
+        
+        // Optimistic update
+        const newState = { ...lightingState, ...updates };
+        setLightingState(newState);
+
+        try {
+            await updateLightingState(updates, { authenticatedFetch });
+        } catch (error) {
+            console.error("Failed to update lighting:", error);
+            // Revert on error
+            const data = await fetchLightingState({ authenticatedFetch });
+            setLightingState(data);
+        }
+    };
+
+    if (isLoading || !lightingState) {
+        return <div className="flex justify-center items-center h-64"><SpinnerIcon className="h-10 w-10 text-brand-accent animate-spin" /></div>;
+    }
+
+    return (
+        <div className="space-y-8">
+            <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-brand-text mb-4 border-b border-gray-200 dark:border-brand-dark-lightest pb-2">
+                    {t('lighting_control')}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                   <LightingControlCard 
+                        lightsOn={lightingState.lightsOn}
+                        onPowerToggle={() => handleUpdate({ lightsOn: !lightingState.lightsOn })}
+                        brightness={lightingState.brightness}
+                        onBrightnessChange={(val) => handleUpdate({ brightness: val })}
+                   />
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const Emergency: React.FC = () => {
+    const { t } = useAppContext();
+    const [shutdownStatus, setShutdownStatus] = useState<'idle' | 'confirming' | 'shuttingDown' | 'shutdownComplete'>('idle');
+    const [progress, setProgress] = useState(0);
+    const [message, setMessage] = useState('');
+    
+    const shutdownSteps = [
+        { messageKey: 'shutdown_step_1', duration: 1500 },
+        { messageKey: 'shutdown_step_2', duration: 1500 },
+        { messageKey: 'shutdown_step_3', duration: 2000 },
+        { messageKey: 'shutdown_step_4', duration: 1000 },
+    ];
+
+    useEffect(() => {
+        let progressInterval: number;
+        if (shutdownStatus === 'shuttingDown') {
+            // Simulate progress bar filling over the total duration
+            const totalDuration = shutdownSteps.reduce((acc, step) => acc + step.duration, 0);
+            progressInterval = window.setInterval(() => {
+                setProgress(prev => Math.min(prev + 1, 100));
+            }, totalDuration / 100);
+
+            // Process steps sequentially
+            let delay = 0;
+            shutdownSteps.forEach(step => {
+                setTimeout(() => {
+                    setMessage(t(step.messageKey));
+                }, delay);
+                delay += step.duration;
+            });
+
+            // Set to complete
+            setTimeout(() => {
+                setShutdownStatus('shutdownComplete');
+                setProgress(100);
+            }, delay);
+        }
+        return () => {
+            clearInterval(progressInterval);
+        };
+    }, [shutdownStatus, t]);
+
+
+    const handleReset = () => {
+        setShutdownStatus('idle');
+        setProgress(0);
+        setMessage('');
+    };
+
+    return (
+        <div className="flex items-center justify-center h-full p-4">
+            <div className="w-full max-w-2xl mx-auto">
+                {shutdownStatus === 'idle' && (
+                    <div className="bg-white dark:bg-brand-dark-light rounded-lg shadow-2xl p-8 text-center">
+                        <ExclamationTriangleIcon className="h-16 w-16 text-status-danger mx-auto" />
+                        <h2 className="mt-4 text-3xl font-extrabold text-gray-900 dark:text-brand-text">{t('emergency_shutdown_title')}</h2>
+                        <p className="mt-4 text-gray-600 dark:text-brand-text-dim max-w-lg mx-auto">{t('shutdown_warning')}</p>
+                        <button
+                            onClick={() => setShutdownStatus('confirming')}
+                            className="mt-8 w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-status-danger hover:bg-red-700 text-white font-bold rounded-lg transition-transform transform hover:scale-105"
+                        >
+                            <ShutdownIcon className="h-6 w-6 mr-3" />
+                            {t('initiate_shutdown')}
+                        </button>
+                    </div>
+                )}
+
+                {shutdownStatus === 'confirming' && (
+                    <div className="bg-white dark:bg-brand-dark-light rounded-lg shadow-2xl p-8 text-center">
+                        <h2 className="text-2xl font-bold text-gray-900 dark:text-brand-text">{t('confirm_shutdown_title')}</h2>
+                        <p className="mt-4 text-gray-600 dark:text-brand-text-dim">{t('confirm_shutdown_message')}</p>
+                        <div className="mt-8 flex flex-col sm:flex-row justify-center gap-4">
+                            <button
+                                onClick={() => setShutdownStatus('shuttingDown')}
+                                className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-status-danger hover:bg-red-700 text-white font-bold rounded-lg transition-colors"
+                            >
+                                {t('confirm_shutdown_button')}
+                            </button>
+                            <button
+                                onClick={() => setShutdownStatus('idle')}
+                                className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 bg-gray-300 hover:bg-gray-400 dark:bg-brand-dark-lightest dark:hover:bg-gray-600 text-gray-800 dark:text-brand-text font-bold rounded-lg transition-colors"
+                            >
+                                {t('cancel_shutdown_button')}
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
+                {(shutdownStatus === 'shuttingDown' || shutdownStatus === 'shutdownComplete') && (
+                    <div className="bg-white dark:bg-brand-dark-light rounded-lg shadow-2xl p-8 text-center">
+                        {shutdownStatus === 'shuttingDown' ? (
+                            <>
+                                <h2 className="text-2xl font-bold text-yellow-500 dark:text-yellow-400">{t('shutdown_in_progress')}</h2>
+                                <div className="mt-6 w-full bg-gray-200 dark:bg-brand-dark-lightest rounded-full h-4 overflow-hidden">
+                                    <div className="bg-yellow-500 h-4 rounded-full transition-all duration-300" style={{ width: `${progress}%` }}></div>
+                                </div>
+                                <p className="mt-4 text-gray-600 dark:text-brand-text-dim h-6 animate-pulse">{message}</p>
+                            </>
+                        ) : (
+                            <>
+                                <CheckCircleIcon className="h-16 w-16 text-status-ok mx-auto"/>
+                                <h2 className="mt-4 text-3xl font-extrabold text-gray-900 dark:text-brand-text">{t('shutdown_complete_title')}</h2>
+                                <p className="mt-4 text-gray-600 dark:text-brand-text-dim">{t('shutdown_complete_message')}</p>
+                                <button
+                                    onClick={handleReset}
+                                    className="mt-8 w-full sm:w-auto inline-flex items-center justify-center px-8 py-4 bg-brand-accent hover:bg-brand-accent-light text-white font-bold rounded-lg transition-transform transform hover:scale-105"
+                                >
+                                    {t('reset_simulation')}
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const AppContent: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const [currentView, setCurrentView] = useState<View>('dashboard');
+  const [showRegister, setShowRegister] = useState(false);
+
+  if (!isAuthenticated) {
+    return showRegister ? <RegistrationPage /> : <LoginPage onShowRegister={() => setShowRegister(true)} />;
+  }
+
+  const renderView = () => {
+    switch (currentView) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'alerts':
+        return <Alerts />;
+      case 'ventilation':
+        return <Ventilation />;
+      case 'lighting':
+        return <Lighting />;
+      case 'emergency':
+        return <Emergency />;
+      case 'reports':
+        return <Reports />;
+      case 'settings':
+        return <Settings />;
+      case 'users':
+        return <Users />;
+      default:
+        return <Dashboard />;
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-white dark:bg-brand-dark font-sans text-gray-900 dark:text-brand-text">
+      <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header currentView={currentView} />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-brand-dark-light p-4 sm:p-6 lg:p-8">
+          {renderView()}
+        </main>
+      </div>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthContextProvider>
+      <AppContextProvider>
+        <AppContent />
+      </AppContextProvider>
+    </AuthContextProvider>
+  );
+};
+
+export default App;
