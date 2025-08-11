@@ -9,37 +9,37 @@ const client = mqtt.connect(MQTT_BROKER_URL);
 
 client.on('connect', () => {
   console.log('Connected to MQTT broker');
-  setInterval(() => {
-    const data = {
-      internalPressure: (Math.random() * 10) + 990,
-      externalPressure: (Math.random() * 10) + 990,
-      internalTemperature: (Math.random() * 10) + 15,
-      externalTemperature: (Math.random() * 10) + 10,
-      internalHumidity: (Math.random() * 20) + 40,
-      externalHumidity: (Math.random() * 20) + 30,
-      internalWindSpeed: Math.random() * 5,
-      externalWindSpeed: Math.random() * 20,
-      internalPM25: Math.random() * 25,
-      externalPM25: Math.random() * 50,
-      internalCO2: (Math.random() * 200) + 400,
-      externalCO2: (Math.random() * 100) + 300,
-      internalO2: 20.95 + (Math.random() * 0.1) - 0.05,
-      externalO2: 20.95 + (Math.random() * 0.1) - 0.05,
-      internalCO: Math.random() * 5,
-      externalCO: Math.random() * 2,
-      airExchangeRate: Math.random() * 5,
-      internalNoise: (Math.random() * 20) + 30,
-      externalNoise: (Math.random() * 30) + 50,
-      internalLux: Math.random() * 1000,
-      lightingStatus: Math.random() > 0.5 ? 'On' : 'Off',
-      basePressure: (Math.random() * 5) + 95,
-      fanSpeed: Math.random() * 3000,
-      timestamp: new Date().toISOString(),
-    };
-    client.publish(MQTT_TOPIC, JSON.stringify(data));
-    writeSensorData(data);
-    broadcast(data);
-  }, 5000);
+  client.subscribe(MQTT_TOPIC, (err) => {
+    if (!err) {
+      console.log(`Subscribed to topic: ${MQTT_TOPIC}`);
+    } else {
+      console.error(`Failed to subscribe to topic ${MQTT_TOPIC}:`, err);
+    }
+  });
+});
+
+client.on('message', (topic, message) => {
+  try {
+    const data = JSON.parse(message.toString());
+    console.log('MQTT message parsed:', data); // Log parsed data
+
+    try {
+      writeSensorData(data);
+      console.log('Data written to InfluxDB.'); // Log successful write
+    } catch (writeError) {
+      console.error('Error writing data to InfluxDB:', writeError); // Log write errors
+    }
+
+    try {
+      broadcast(data);
+      console.log('Data broadcasted via WebSocket.'); // Log successful broadcast
+    } catch (broadcastError) {
+      console.error('Error broadcasting data via WebSocket:', broadcastError); // Log broadcast errors
+    }
+
+  } catch (parseError) {
+    console.error('Error parsing MQTT message:', parseError);
+  }
 });
 
 client.on('error', (error) => {

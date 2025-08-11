@@ -1,7 +1,10 @@
+require('dotenv').config(); // Add this line to load .env file
 const mqtt = require('mqtt');
 
 const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL || 'mqtt://test.mosquitto.org';
 const MQTT_TOPIC = process.env.MQTT_TOPIC || 'air-dome/sensors';
+
+console.log('MQTT Simulator connecting to broker:', MQTT_BROKER_URL); // Add this log
 
 const client = mqtt.connect(MQTT_BROKER_URL);
 

@@ -41,8 +41,8 @@ export interface AirDomeData {
   externalO2: { value: number; status: StatusLevel; history: number[] };
   internalCO: { value: number; status: StatusLevel; history: number[] };
   externalCO: { value: number; status: StatusLevel; history: number[] };
-  internalTemp: { value: number; status: StatusLevel; history: number[] };
-  externalTemp: { value: number; status: StatusLevel; history: number[] };
+  internalTemperature: { value: number; status: StatusLevel; history: number[] };
+  externalTemperature: { value: number; status: StatusLevel; history: number[] };
   internalHumidity: { value: number; status: StatusLevel; history: number[] };
   externalHumidity: { value: number; status: StatusLevel; history: number[] };
   membraneHealth: { value: string; status: StatusLevel };
@@ -52,6 +52,7 @@ export interface AirDomeData {
   internalLux: { value: number; status: StatusLevel; history: number[] };
   lightingStatus: { value: string; status: StatusLevel };
   airShutterStatus: { value: string; status: StatusLevel };
+  timestamp: string; // Add this line
 }
 
 export interface Alert {

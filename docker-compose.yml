@@ -14,6 +14,17 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=my-org
       - DOCKER_INFLUXDB_INIT_BUCKET=my-bucket
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-token
-
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0.15
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001" # For websockets, if needed
+    volumes:
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf # Optional: if you have a custom config
 volumes:
   influxdb_data:
+  mosquitto_data:
+  mosquitto_log:
