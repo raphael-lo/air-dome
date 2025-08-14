@@ -1,5 +1,7 @@
-import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
+dotenv.config();
+
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import http from 'http';
 import sensorDataRouter from './routes/sensorData';
@@ -8,13 +10,10 @@ import alertRouter from './routes/alert';
 import fanControlRouter from './routes/fanControl';
 import lightingControlRouter from './routes/lightingControl';
 import alertThresholdsRouter from './routes/alertThresholds';
-import { initializeDatabase } from './services/databaseService';
+import httpSensorRouter from './routes/httpSensor';
+import './services/databaseService';
 import './services/mqttService';
 import { initializeWebSocket } from './services/websocketService';
-
-initializeDatabase();
-
-dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
@@ -28,6 +27,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+app.use('/api', httpSensorRouter);
 app.use('/api', sensorDataRouter);
 app.use('/api', userRouter);
 app.use('/api', alertRouter);

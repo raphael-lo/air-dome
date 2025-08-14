@@ -1,5 +1,31 @@
 version: '3.8'
+
 services:
+  backend:
+    build: ./backend
+    container_name: backend
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    depends_on:
+      - influxdb
+      - mqtt-broker
+    restart: always
+    networks:
+      - air-dome-net
+    environment:
+      - PORT=3001
+      - DATABASE_URL=./air_dome.db
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=my-super-secret-token
+      - INFLUXDB_ORG=my-org
+      - INFLUXDB_BUCKET=my-bucket
+      - MQTT_BROKER_URL=mqtt://mqtt-broker:1883
+      - CORS_ORIGIN=https://air-dome.yotatech.com.hk
+    command: npm start
+
   influxdb:
     image: influxdb:2.7.1
     container_name: influxdb
@@ -14,17 +40,27 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=my-org
       - DOCKER_INFLUXDB_INIT_BUCKET=my-bucket
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-token
+    networks:
+      - air-dome-net
+
   mqtt-broker:
     image: eclipse-mosquitto:2.0.15
     container_name: mosquitto
     ports:
       - "1883:1883"
-      - "9001:9001" # For websockets, if needed
+      - "9001:9001"
     volumes:
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
-      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf # Optional: if you have a custom config
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - air-dome-net
+
 volumes:
   influxdb_data:
   mosquitto_data:
   mosquitto_log:
+
+networks:
+  air-dome-net:
+    driver: bridge

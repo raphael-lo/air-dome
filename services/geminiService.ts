@@ -50,7 +50,9 @@ export async function* analyzeDomeDataStream(data: AirDomeData, lang: 'en' | 'zh
 
 // --- REAL BACKEND INTEGRATION ---
 
-const BASE_URL = 'http://localhost:3001/api';
+import { config } from '../config';
+
+const BASE_URL = config.apiBaseUrl;
 
 interface AuthenticatedFetch {
   authenticatedFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;

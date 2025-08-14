@@ -2,7 +2,10 @@ import mqtt from 'mqtt';
 import { writeSensorData } from './influxdbService';
 import { broadcast } from './websocketService';
 
-const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL || 'mqtt://test.mosquitto.org';
+const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL;
+if (!MQTT_BROKER_URL) {
+  throw new Error('MQTT_BROKER_URL environment variable is not set.');
+}
 const MQTT_TOPIC = process.env.MQTT_TOPIC || 'air-dome/sensors';
 
 const client = mqtt.connect(MQTT_BROKER_URL);

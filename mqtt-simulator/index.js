@@ -1,47 +1,44 @@
-require('dotenv').config(); // Add this line to load .env file
-const mqtt = require('mqtt');
+require('dotenv').config();
+const axios = require('axios');
 
-const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL || 'mqtt://test.mosquitto.org';
-const MQTT_TOPIC = process.env.MQTT_TOPIC || 'air-dome/sensors';
+const API_URL = process.env.API_URL || 'http://localhost:3001/api/v1/sensor-data';
 
-console.log('MQTT Simulator connecting to broker:', MQTT_BROKER_URL); // Add this log
+console.log('HTTP Simulator sending to:', API_URL);
 
-const client = mqtt.connect(MQTT_BROKER_URL);
+setInterval(() => {
+  const data = {
+    internalPressure: (Math.random() * 10) + 990,
+    externalPressure: (Math.random() * 10) + 990,
+    internalTemperature: (Math.random() * 10) + 15,
+    externalTemperature: (Math.random() * 10) + 10,
+    internalHumidity: (Math.random() * 20) + 40,
+    externalHumidity: (Math.random() * 20) + 30,
+    internalWindSpeed: Math.random() * 5,
+    externalWindSpeed: Math.random() * 20,
+    internalPM25: Math.random() * 25,
+    externalPM25: Math.random() * 50,
+    internalCO2: (Math.random() * 200) + 400,
+    externalCO2: (Math.random() * 100) + 300,
+    internalO2: 20.95 + (Math.random() * 0.1) - 0.05,
+    externalO2: 20.95 + (Math.random() * 0.1) - 0.05,
+    internalCO: Math.random() * 5,
+    externalCO: Math.random() * 2,
+    airExchangeRate: Math.random() * 5,
+    internalNoise: (Math.random() * 20) + 30,
+    externalNoise: (Math.random() * 30) + 50,
+    internalLux: Math.random() * 1000,
+    lightingStatus: Math.random() > 0.5 ? 'On' : 'Off',
+    basePressure: (Math.random() * 5) + 95,
+    fanSpeed: Math.random() * 3000,
+    timestamp: new Date().toISOString(),
+  };
 
-client.on('connect', () => {
-  console.log('Connected to MQTT broker');
-  setInterval(() => {
-    const data = {
-      internalPressure: (Math.random() * 10) + 990,
-      externalPressure: (Math.random() * 10) + 990,
-      internalTemperature: (Math.random() * 10) + 15,
-      externalTemperature: (Math.random() * 10) + 10,
-      internalHumidity: (Math.random() * 20) + 40,
-      externalHumidity: (Math.random() * 20) + 30,
-      internalWindSpeed: Math.random() * 5,
-      externalWindSpeed: Math.random() * 20,
-      internalPM25: Math.random() * 25,
-      externalPM25: Math.random() * 50,
-      internalCO2: (Math.random() * 200) + 400,
-      externalCO2: (Math.random() * 100) + 300,
-      internalO2: 20.95 + (Math.random() * 0.1) - 0.05,
-      externalO2: 20.95 + (Math.random() * 0.1) - 0.05,
-      internalCO: Math.random() * 5,
-      externalCO: Math.random() * 2,
-      airExchangeRate: Math.random() * 5,
-      internalNoise: (Math.random() * 20) + 30,
-      externalNoise: (Math.random() * 30) + 50,
-      internalLux: Math.random() * 1000,
-      lightingStatus: Math.random() > 0.5 ? 'On' : 'Off',
-      basePressure: (Math.random() * 5) + 95,
-      fanSpeed: Math.random() * 3000,
-      timestamp: new Date().toISOString(),
-    };
-    client.publish(MQTT_TOPIC, JSON.stringify(data));
-    console.log('Sent data:', data);
-  }, 5000);
-});
-
-client.on('error', (error) => {
-  console.error('MQTT client error:', error);
-});
+  axios.post(API_URL, data)
+    .then(response => {
+      console.log('Sent data:', data);
+      console.log('Response:', response.data);
+    })
+    .catch(error => {
+      console.error('Error sending data:', error.message);
+    });
+}, 5000);

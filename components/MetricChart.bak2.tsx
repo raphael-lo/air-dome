@@ -14,9 +14,7 @@ interface MetricChartProps {
   currentData: AirDomeData;
 }
 
-import { config } from '../config';
-
-const BASE_URL = config.apiBaseUrl;
+const BASE_URL = 'http://localhost:3001/api';
 
 // LTTB downsampling algorithm
 function largestTriangleThreeBuckets(data: [number, number][], threshold: number): [number, number][] {
@@ -106,10 +104,9 @@ export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, intern
     { label: t('24_hours'), value: '-24h' },
   ];
 
-  const fetchChartData = async (isRefresh: boolean) => {
-      if (!isRefresh) {
-        setIsLoading(true);
-      }
+  useEffect(() => {
+    const fetchChartData = async () => {
+      setIsLoading(true);
       const fetchedSeries: { nameKey: string, history: [number, number][] }[] = [];
 
       const fetchHistory = async (field: string, nameKey: string) => {
@@ -119,7 +116,7 @@ export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, intern
             throw new Error(`HTTP error! status: ${response.status}`);
           }
           const history = await response.json();
-          const formattedHistory: [number, number][] = history.filter(p => p && p._value !== null && p._time).map((p: any) => [new Date(p._time).getTime(), p._value]);
+          const formattedHistory: [number, number][] = history.filter(p => p !== null).map((p: any) => [new Date(p.time).getTime(), p.value]);
           fetchedSeries.push({ nameKey, history: formattedHistory });
         } catch (error) {
           console.error(`Error fetching historical data for ${field}:`, error);
@@ -138,13 +135,37 @@ export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, intern
       setIsLoading(false);
     };
 
-  useEffect(() => {
-    fetchChartData(false); // Initial load
-    const interval = setInterval(() => fetchChartData(true), 5000); // Refresh
-    return () => clearInterval(interval);
+    fetchChartData();
   }, [selectedPeriod, internalField, externalField, authenticatedFetch, site]);
 
-  
+  useEffect(() => {
+    if (!currentData || !currentData.timestamp) return;
+
+    setSeriesData(prevSeriesData => {
+        if (prevSeriesData.length === 0) {
+            return prevSeriesData;
+        }
+        return prevSeriesData.map(series => {
+            let newValue: number | undefined;
+            if (series.nameKey === 'internal' && internalField) {
+                newValue = currentData[internalField]?.value;
+            } else if (series.nameKey === 'external' && externalField) {
+                newValue = currentData[externalField]?.value;
+            }
+
+            if (newValue !== undefined) {
+                const newPoint: [number, number] = [new Date(currentData.timestamp).getTime(), newValue];
+                const newHistory = [...series.history, newPoint];
+                // Keep the history size in check, e.g., last 24 hours of data at 5s interval
+                if (newHistory.length > (24 * 60 * 60) / 5) {
+                    newHistory.shift();
+                }
+                return { ...series, history: newHistory };
+            }
+            return series;
+        });
+    });
+}, [currentData, internalField, externalField]);
 
   const handleMouseEnter = (event: React.MouseEvent<SVGCircleElement>, value: number, nameKey: string) => {
     if (chartContainerRef.current) {
@@ -238,7 +259,7 @@ export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, intern
           <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
         </div>
       </div>
-      <svg width="250%" viewBox={`0 0 ${width} ${height}`} aria-label={`Chart of historical data.`}>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} aria-label={`Chart of historical data.`}>
         {yAxisLabels.map(({ value, yPos }, i) => (
           <g key={`y-axis-${i}`}>
             <line x1={padding} y1={yPos} x2={width - padding} y2={yPos} stroke={gridColor} strokeDasharray="2,2" />

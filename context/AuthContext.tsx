@@ -8,6 +8,8 @@ interface AuthContextType {
   authenticatedFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 
+import { config } from '../config';
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthContextProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -19,7 +21,7 @@ export const AuthContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
   }, [token]);
 
   const login = async (user: string, pass: string): Promise<void> => {
-    const response = await fetch('http://localhost:3001/api/login', {
+    const response = await fetch(`${config.apiBaseUrl}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

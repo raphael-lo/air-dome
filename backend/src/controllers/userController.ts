@@ -46,7 +46,7 @@ export const login = (req: Request, res: Response) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ id: row.id, username: row.username, role: row.role, status: row.status }, process.env.JWT_SECRET || 'your_jwt_secret', { expiresIn: '1h' });
+    const token = jwt.sign({ id: row.id, username: row.username, role: row.role, status: row.status }, process.env.JWT_SECRET || 'your_jwt_secret');
 
     res.json({ message: 'Logged in successfully', token });
   });

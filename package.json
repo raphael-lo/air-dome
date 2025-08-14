@@ -12,6 +12,7 @@
     "@google/genai": "^1.13.0",
     "jspdf": "^2.5.1",
     "jspdf-autotable": "^3.8.2",
+    "mqtt": "^5.14.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "ws": "^8.18.3"

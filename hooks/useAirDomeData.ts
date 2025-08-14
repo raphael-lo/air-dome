@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import type { AirDomeData, Site } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { StatusLevel } from '../types';
+import { config } from '../config';
 
-const BASE_URL = 'http://localhost:3001/api';
-const WS_URL = 'ws://localhost:3001';
+const BASE_URL = config.apiBaseUrl;
+const WS_URL = config.wsUrl;
 
 export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) => {
   const [data, setData] = useState<AirDomeData | null>(null);
@@ -150,12 +151,12 @@ export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestIn
         });
       };
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
+      ws.onerror = (event) => {
+        console.error('WebSocket error:', event);
       };
 
       ws.onclose = (event) => {
-        console.log('Disconnected from WebSocket:', event);
+        console.log(`WebSocket disconnected: ${event.code} ${event.reason}`);
         wsRef.current = null; // Clear ref on close
       };
 

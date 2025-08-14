@@ -22,3 +22,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables
+.env*
+!/.env.example
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.db
+
+# Certificates and keys
+*.crt
+*.key
+*.srl

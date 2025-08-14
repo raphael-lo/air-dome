@@ -225,72 +225,72 @@ export const Dashboard: React.FC = () => {
         { (data.internalPressure.value !== 0 || data.externalPressure.value !== 0 || data.basePressure.value !== 0 || data.fanSpeed.value !== 0) && (
         <MetricGroup title={metricGroupTitles.dome_integrity} isOpen={openSections[metricGroupTitles.dome_integrity]} onToggle={() => toggleSection(metricGroupTitles.dome_integrity)}>
             <PairedMetricCard titleKey="pressure" icon={<Icons.PressureIcon />} unit="Pa"
-                internalData={{ value: data.internalPressure.value.toFixed(1), status: data.internalPressure.status }}
-                externalData={{ value: data.externalPressure.value.toFixed(1), status: data.externalPressure.status }}
+                internalData={{ value: data.internalPressure.value?.toFixed(1) ?? 'N/A', status: data.internalPressure.status }}
+                externalData={{ value: data.externalPressure.value?.toFixed(1) ?? 'N/A', status: data.externalPressure.status }}
                 onClick={() => handlePairedMetricClick('pressure', 'internalPressure', 'externalPressure', 'Pa')}
             />
-            {data.basePressure && <MetricCard title={t('base_corner_pressure')} value={data.basePressure.value.toFixed(1)} unit="kPa" status={data.basePressure.status} icon={<Icons.PressureIcon />} onClick={() => handleMetricClick('base_corner_pressure', 'basePressure', 'kPa')} />}
+            {data.basePressure && <MetricCard title={t('base_corner_pressure')} value={data.basePressure.value?.toFixed(1) ?? 'N/A'} unit="kPa" status={data.basePressure.status} icon={<Icons.PressureIcon />} onClick={() => handleMetricClick('base_corner_pressure', 'basePressure', 'kPa')} />}
             <MetricCard title={t('membrane_health')} value={t(data.membraneHealth.status === StatusLevel.Ok ? 'normal' : 'defect_detected')} unit="" status={data.membraneHealth.status} icon={<Icons.MembraneIcon />} />
-            <MetricCard title={t('fan_speed')} value={data.fanSpeed.value.toFixed(0)} unit="RPM" status={data.fanSpeed.status} icon={<Icons.FanIcon />} onClick={() => handleMetricClick('fan_speed', 'fanSpeed', 'RPM')} />
+            <MetricCard title={t('fan_speed')} value={data.fanSpeed.value?.toFixed(0) ?? 'N/A'} unit="RPM" status={data.fanSpeed.status} icon={<Icons.FanIcon />} onClick={() => handleMetricClick('fan_speed', 'fanSpeed', 'RPM')} />
         </MetricGroup>)}
 
         { (data.internalTemperature.value !== 0 || data.externalTemperature.value !== 0 || data.internalHumidity.value !== 0 || data.externalHumidity.value !== 0 || data.externalWindSpeed.value !== 0) && (
         <MetricGroup title={metricGroupTitles.environment} isOpen={openSections[metricGroupTitles.environment]} onToggle={() => toggleSection(metricGroupTitles.environment)}>
             <PairedMetricCard titleKey="temperature" icon={<Icons.TempIcon />} unit="°C"
-                internalData={{ value: data.internalTemperature.value.toFixed(1), status: data.internalTemperature.status }}
-                externalData={{ value: data.externalTemperature.value.toFixed(1), status: data.externalTemperature.status }}
+                internalData={{ value: data.internalTemperature.value?.toFixed(1) ?? 'N/A', status: data.internalTemperature.status }}
+                externalData={{ value: data.externalTemperature.value?.toFixed(1) ?? 'N/A', status: data.externalTemperature.status }}
                 onClick={() => handlePairedMetricClick('temperature', 'internalTemperature', 'externalTemperature', '°C')}
             />
             <PairedMetricCard titleKey="humidity" icon={<Icons.HumidityIcon />} unit="%RH"
-                internalData={{ value: data.internalHumidity.value.toFixed(0), status: data.internalHumidity.status }}
-                externalData={{ value: data.externalHumidity.value.toFixed(0), status: data.externalHumidity.status }}
+                internalData={{ value: data.internalHumidity.value?.toFixed(0) ?? 'N/A', status: data.internalHumidity.status }}
+                externalData={{ value: data.externalHumidity.value?.toFixed(0) ?? 'N/A', status: data.externalHumidity.status }}
                 onClick={() => handlePairedMetricClick('humidity', 'internalHumidity', 'externalHumidity', '%RH')}
             />
-            <MetricCard title={t('external_wind_speed')} value={data.externalWindSpeed.value.toFixed(1)} unit="m/s" status={data.externalWindSpeed.status} icon={<Icons.WindIcon />} onClick={() => handleMetricClick('external_wind_speed', 'externalWindSpeed', 'm/s')} />
+            <MetricCard title={t('external_wind_speed')} value={data.externalWindSpeed.value?.toFixed(1) ?? 'N/A'} unit="m/s" status={data.externalWindSpeed.status} icon={<Icons.WindIcon />} onClick={() => handleMetricClick('external_wind_speed', 'externalWindSpeed', 'm/s')} />
         </MetricGroup>)}
 
         { (data.internalPM25.value !== 0 || data.externalPM25.value !== 0 || data.internalCO2.value !== 0 || data.externalCO2.value !== 0 || data.internalO2.value !== 0 || data.externalO2.value !== 0 || data.internalCO.value !== 0 || data.externalCO.value !== 0 || data.airExchangeRate.value !== 0) && (
         <MetricGroup title={metricGroupTitles.air_quality} isOpen={openSections[metricGroupTitles.air_quality]} onToggle={() => toggleSection(metricGroupTitles.air_quality)}>
             <PairedMetricCard titleKey="pm25" icon={<Icons.PM25Icon />} unit="µg/m³"
-                internalData={{ value: data.internalPM25.value.toFixed(1), status: data.internalPM25.status }}
-                externalData={{ value: data.externalPM25.value.toFixed(1), status: data.externalPM25.status }}
+                internalData={{ value: data.internalPM25.value?.toFixed(1) ?? 'N/A', status: data.internalPM25.status }}
+                externalData={{ value: data.externalPM25.value?.toFixed(1) ?? 'N/A', status: data.externalPM25.status }}
                 onClick={() => handlePairedMetricClick('pm25', 'internalPM25', 'externalPM25', 'µg/m³')}
             />
             <PairedMetricCard titleKey="co2" icon={<Icons.CO2Icon />} unit="ppm"
-                internalData={{ value: data.internalCO2.value.toFixed(0), status: data.internalCO2.status }}
-                externalData={{ value: data.externalCO2.value.toFixed(0), status: data.externalCO2.status }}
+                internalData={{ value: data.internalCO2.value?.toFixed(0) ?? 'N/A', status: data.internalCO2.status }}
+                externalData={{ value: data.externalCO2.value?.toFixed(0) ?? 'N/A', status: data.externalCO2.status }}
                 onClick={() => handlePairedMetricClick('co2', 'internalCO2', 'externalCO2', 'ppm')}
             />
             <PairedMetricCard titleKey="o2" icon={<Icons.O2Icon />} unit="%"
-                internalData={{ value: data.internalO2.value.toFixed(1), status: data.internalO2.status }}
-                externalData={{ value: data.externalO2.value.toFixed(1), status: data.externalO2.status }}
+                internalData={{ value: data.internalO2.value?.toFixed(1) ?? 'N/A', status: data.internalO2.status }}
+                externalData={{ value: data.externalO2.value?.toFixed(1) ?? 'N/A', status: data.externalO2.status }}
                 onClick={() => handlePairedMetricClick('o2', 'internalO2', 'externalO2', '%')}
             />
              <PairedMetricCard titleKey="co" icon={<Icons.COIcon />} unit="ppm"
-                internalData={{ value: data.internalCO.value.toFixed(1), status: data.internalCO.status }}
-                externalData={{ value: data.externalCO.value.toFixed(1), status: data.externalCO.status }}
+                internalData={{ value: data.internalCO.value?.toFixed(1) ?? 'N/A', status: data.internalCO.status }}
+                externalData={{ value: data.externalCO.value?.toFixed(1) ?? 'N/A', status: data.externalCO.status }}
                 onClick={() => handlePairedMetricClick('co', 'internalCO', 'externalCO', 'ppm')}
             />
-            <MetricCard title={t('air_exchange_rate')} value={data.airExchangeRate.value.toFixed(0)} unit="m³/h" status={data.airExchangeRate.status} icon={<Icons.AirExchangeIcon />} onClick={() => handleMetricClick('air_exchange_rate', 'airExchangeRate', 'm³/h')} />
+            <MetricCard title={t('air_exchange_rate')} value={data.airExchangeRate.value?.toFixed(0) ?? 'N/A'} unit="m³/h" status={data.airExchangeRate.status} icon={<Icons.AirExchangeIcon />} onClick={() => handleMetricClick('air_exchange_rate', 'airExchangeRate', 'm³/h')} />
         </MetricGroup>)}
         
         { (data.internalNoise.value !== 0 || data.externalNoise.value !== 0 || data.internalLux.value !== 0) && (
         <MetricGroup title={metricGroupTitles.systems_status} isOpen={openSections[metricGroupTitles.systems_status]} onToggle={() => toggleSection(metricGroupTitles.systems_status)}>
             <PairedMetricCard titleKey="noise" icon={<Icons.NoiseIcon />} unit="dB"
-                internalData={{ value: data.internalNoise.value.toFixed(1), status: data.internalNoise.status }}
-                externalData={{ value: data.externalNoise.value.toFixed(1), status: data.externalNoise.status }}
+                internalData={{ value: data.internalNoise.value?.toFixed(1) ?? 'N/A', status: data.internalNoise.status }}
+                externalData={{ value: data.externalNoise.value?.toFixed(1) ?? 'N/A', status: data.externalNoise.status }}
                 onClick={() => handlePairedMetricClick('noise', 'internalNoise', 'externalNoise', 'dB')}
             />
-            <MetricCard title={t('internal_lux_level')} value={data.internalLux.value.toFixed(0)} unit="lux" status={data.internalLux.status} icon={<Icons.LuxIcon />} onClick={() => handleMetricClick('internal_lux_level', 'internalLux', 'lux')} />
+            <MetricCard title={t('internal_lux_level')} value={data.internalLux.value?.toFixed(0) ?? 'N/A'} unit="lux" status={data.internalLux.status} icon={<Icons.LuxIcon />} onClick={() => handleMetricClick('internal_lux_level', 'internalLux', 'lux')} />
             <MetricCard title={t('internal_lighting_status')} value={t(data.lightingStatus.value.toLowerCase())} unit="" status={data.lightingStatus.status} icon={<Icons.BulbIcon />} />
             <MetricCard title={t('air_shutter_status')} value={t(data.airShutterStatus.value.toLowerCase())} unit="" status={data.airShutterStatus.status} icon={<Icons.ShutterIcon />} />
         </MetricGroup>)}
 
         { (data.powerConsumption.value !== 0 || data.voltage.value !== 0 || data.current.value !== 0) && (
         <MetricGroup title={metricGroupTitles.power} isOpen={openSections[metricGroupTitles.power]} onToggle={() => toggleSection(metricGroupTitles.power)}>
-            {data.powerConsumption.value !== 0 && <MetricCard title={t('power_consumption')} value={data.powerConsumption.value.toFixed(0)} unit="W" status={data.powerConsumption.status} icon={<Icons.PowerIcon />} onClick={() => handleMetricClick('power_consumption', 'powerConsumption', 'W')} />}
-            {data.voltage.value !== 0 && <MetricCard title={t('voltage')} value={data.voltage.value.toFixed(0)} unit="V" status={data.voltage.status} icon={<Icons.PowerIcon />} onClick={() => handleMetricClick('voltage', 'voltage', 'V')} />}
-            {data.current.value !== 0 && <MetricCard title={t('current')} value={data.current.value.toFixed(1)} unit="A" status={data.current.status} icon={<Icons.PowerIcon />} onClick={() => handleMetricClick('current', 'current', 'A')} />}
+            {data.powerConsumption.value !== 0 && <MetricCard title={t('power_consumption')} value={data.powerConsumption.value?.toFixed(0) ?? 'N/A'} unit="W" status={data.powerConsumption.status} icon={<Icons.PowerIcon />} onClick={() => handleMetricClick('power_consumption', 'powerConsumption', 'W')} />}
+            {data.voltage.value !== 0 && <MetricCard title={t('voltage')} value={data.voltage.value?.toFixed(0) ?? 'N/A'} unit="V" status={data.voltage.status} icon={<Icons.PowerIcon />} onClick={() => handleMetricClick('voltage', 'voltage', 'V')} />}
+            {data.current.value !== 0 && <MetricCard title={t('current')} value={data.current.value?.toFixed(1) ?? 'N/A'} unit="A" status={data.current.status} icon={<Icons.PowerIcon />} onClick={() => handleMetricClick('current', 'current', 'A')} />}
         </MetricGroup>)}
       </div>
 

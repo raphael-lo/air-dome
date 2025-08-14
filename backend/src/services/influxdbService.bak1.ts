@@ -1,9 +1,12 @@
 import { InfluxDB, Point } from '@influxdata/influxdb-client';
+import dotenv from 'dotenv';
 
-const url = process.env.INFLUXDB_URL || 'http://localhost:8086';
-const token = 'my-super-secret-token';
-const org = 'my-org';
-const bucket = 'my-bucket';
+dotenv.config();
+
+const url = process.env.INFLUXDB_URL || '';
+const token = process.env.INFLUXDB_TOKEN || '';
+const org = process.env.INFLUXDB_ORG || '';
+const bucket = process.env.INFLUXDB_BUCKET || '';
 
 const influxDB = new InfluxDB({ url, token });
 const writeApi = influxDB.getWriteApi(org, bucket);
@@ -82,25 +85,14 @@ const getRangeInMinutes = (range: string): number => {
   return 0; // Should not happen with valid ranges
 };
 
-const getRangeInSeconds = (range: string): number => {
-  const value = parseInt(range.slice(1, -1)); // Remove '-' and 'm'/'h'
-  const unit = range.slice(-1);
-  if (unit === 'm') {
-    return value * 60;
-  } else if (unit === 'h') {
-    return value * 60 * 60;
-  }
-  return 0; // Should not happen with valid ranges
-};
-
 export const queryHistoricalData = async (measurement: string, field: string, range: string = '-24h', maxPoints: number = 40) => {
   const queryApi = influxDB.getQueryApi(org);
 
-  const rangeSeconds = getRangeInSeconds(range);
-  let every = `${Math.max(1, Math.floor(rangeSeconds / maxPoints))}s`; // Ensure at least 1 minute interval
+  const rangeMinutes = getRangeInMinutes(range);
+  let every = `${Math.max(1, Math.floor(rangeMinutes / maxPoints))}m`; // Ensure at least 1 minute interval
 
   // Adjust 'every' for very short ranges to avoid 0 or too small intervals
-  if (rangeSeconds < maxPoints) {
+  if (rangeMinutes < maxPoints) {
     every = '1m'; // For ranges smaller than maxPoints, aggregate by 1 minute
   }
 

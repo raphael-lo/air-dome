@@ -11,89 +11,15 @@ interface MetricChartProps {
   externalField?: string;
   authenticatedFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
   site: Site;
-  currentData: AirDomeData;
 }
 
-import { config } from '../config';
+const BASE_URL = 'http://localhost:3001/api';
 
-const BASE_URL = config.apiBaseUrl;
-
-// LTTB downsampling algorithm
-function largestTriangleThreeBuckets(data: [number, number][], threshold: number): [number, number][] {
-    const dataLength = data.length;
-    if (threshold >= dataLength || threshold === 0) {
-        return data; // Nothing to do
-    }
-
-    const sampled: [number, number][] = [];
-    let sampledIndex = 0;
-
-    // Bucket size. Leave room for start and end data points
-    const every = (dataLength - 2) / (threshold - 2);
-
-    let a = 0; // Initially a is the first point in the triangle
-    let maxAreaPoint: [number, number];
-    let maxArea: number;
-    let area: number;
-    let nextA = 0;
-
-    sampled[sampledIndex++] = data[a]; // Always add the first point
-
-    for (let i = 0; i < threshold - 2; i++) {
-        // Calculate point average for next bucket (containing c)
-        let avgX = 0;
-        let avgY = 0;
-        const avgRangeStart = Math.floor((i + 1) * every) + 1;
-        const avgRangeEnd = Math.floor((i + 2) * every) + 1;
-        const avgRangeLength = avgRangeEnd - avgRangeStart;
-
-        for (let j = avgRangeStart; j < avgRangeEnd; j++) {
-            if (data[j]) {
-                avgX += data[j][0];
-                avgY += data[j][1];
-            }
-        }
-        avgX /= avgRangeLength;
-        avgY /= avgRangeLength;
-
-        // Get the range for this bucket
-        const rangeOffs = Math.floor(i * every) + 1;
-        const rangeTo = Math.floor((i + 1) * every) + 1;
-
-        // Point a
-        const pointAX = data[a][0];
-        const pointAY = data[a][1];
-
-        maxArea = -1;
-
-        for (let j = rangeOffs; j < rangeTo; j++) {
-            if (data[j]) {
-                // Calculate triangle area over three buckets
-                area = Math.abs(
-                    (pointAX - avgX) * (data[j][1] - pointAY) -
-                    (pointAX - data[j][0]) * (avgY - pointAY)
-                ) * 0.5;
-                if (area > maxArea) {
-                    maxArea = area;
-                    maxAreaPoint = data[j];
-                    nextA = j; // Next a is this j
-                }
-            }
-        }
-
-        sampled[sampledIndex++] = maxAreaPoint!;
-        a = nextA; // This a is the next a (chosen b)
-    }
-
-    sampled[sampledIndex++] = data[dataLength - 1]; // Always add last
-    return sampled;
-}
-
-export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, internalField, externalField, authenticatedFetch, site, currentData }) => {
+export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, internalField, externalField, authenticatedFetch, site }) => {
   const { theme, t } = useAppContext();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('-24h');
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const [seriesData, setSeriesData] = useState<{ nameKey: string, history: [number, number][] }[]>([]);
+  const [seriesData, setSeriesData] = useState<{ nameKey: string, history: { time: number, value: number }[] }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; value: number; nameKey: string; } | null>(null);
 
@@ -106,20 +32,32 @@ export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, intern
     { label: t('24_hours'), value: '-24h' },
   ];
 
-  const fetchChartData = async (isRefresh: boolean) => {
-      if (!isRefresh) {
-        setIsLoading(true);
-      }
-      const fetchedSeries: { nameKey: string, history: [number, number][] }[] = [];
+  const getMaxPoints = (period: string): number => {
+    switch (period) {
+      case '-3m': return 36;
+      case '-30m': return 60;
+      case '-1h': return 60;
+      case '-6h': return 120;
+      case '-12h': return 120;
+      case '-24h': return 240;
+      default: return 240;
+    }
+  };
+
+  useEffect(() => {
+    const fetchChartData = async () => {
+      setIsLoading(true);
+      const fetchedSeries: { nameKey: string, history: { time: number, value: number }[] }[] = [];
 
       const fetchHistory = async (field: string, nameKey: string) => {
         try {
-          const response = await authenticatedFetch(`${BASE_URL}/sensor-data/history?measurement=sensor_data&field=${field}&range=${selectedPeriod}&maxPoints=500`);
+          const maxPoints = getMaxPoints(selectedPeriod);
+          const response = await authenticatedFetch(`${BASE_URL}/sensor-data/history?measurement=sensor_data&field=${field}&range=${selectedPeriod}&maxPoints=${maxPoints}`);
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
           const history = await response.json();
-          const formattedHistory: [number, number][] = history.filter(p => p && p._value !== null && p._time).map((p: any) => [new Date(p._time).getTime(), p._value]);
+          const formattedHistory = history.filter((p: any) => p && p._value !== null && p._time).map((p: any) => ({ time: new Date(p._time).getTime(), value: p._value }));
           fetchedSeries.push({ nameKey, history: formattedHistory });
         } catch (error) {
           console.error(`Error fetching historical data for ${field}:`, error);
@@ -138,13 +76,8 @@ export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, intern
       setIsLoading(false);
     };
 
-  useEffect(() => {
-    fetchChartData(false); // Initial load
-    const interval = setInterval(() => fetchChartData(true), 5000); // Refresh
-    return () => clearInterval(interval);
+    fetchChartData();
   }, [selectedPeriod, internalField, externalField, authenticatedFetch, site]);
-
-  
 
   const handleMouseEnter = (event: React.MouseEvent<SVGCircleElement>, value: number, nameKey: string) => {
     if (chartContainerRef.current) {
@@ -168,13 +101,8 @@ export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, intern
   const height = 280;
   const padding = 40;
 
-  const downsampledSeries = seriesData.map(s => {
-    const threshold = 100; // Number of points to display
-    const downsampled = largestTriangleThreeBuckets(s.history, threshold);
-    return { ...s, history: downsampled };
-  });
-
-  const allHistory = downsampledSeries.flatMap(s => s.history).filter(point => point !== null);
+  const allHistory = seriesData.flatMap(s => s.history).filter(point => point !== null);
+  console.log('allHistory.length', allHistory.length);
 
   if (isLoading) {
     return (
@@ -188,10 +116,10 @@ export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, intern
     return <div className="text-center p-10">Not enough data to display chart.</div>;
   }
 
-  const xMin = allHistory[0][0];
-  const xMax = allHistory[allHistory.length - 1][0];
-  const yMin = Math.min(...allHistory.map(p => p[1]));
-  const yMax = Math.max(...allHistory.map(p => p[1]));
+  const xMin = Math.min(...allHistory.map(p => p.time));
+  const xMax = Math.max(...allHistory.map(p => p.time));
+  const yMin = Math.min(...allHistory.map(p => p.value));
+  const yMax = Math.max(...allHistory.map(p => p.value));
   const yRange = yMax - yMin === 0 ? 1 : yMax - yMin;
 
   const xToSvg = (x: number) => {
@@ -238,7 +166,7 @@ export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, intern
           <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
         </div>
       </div>
-      <svg width="250%" viewBox={`0 0 ${width} ${height}`} aria-label={`Chart of historical data.`}>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} aria-label={`Chart of historical data.`}>
         {yAxisLabels.map(({ value, yPos }, i) => (
           <g key={`y-axis-${i}`}>
             <line x1={padding} y1={yPos} x2={width - padding} y2={yPos} stroke={gridColor} strokeDasharray="2,2" />
@@ -252,12 +180,12 @@ export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, intern
                 {label}
             </text>
         ))}
-        {downsampledSeries.map((s, seriesIndex) => {
+        {seriesData.map((s, seriesIndex) => {
             const pathD = s.history
               .map((point, i) => {
                 if (point === null) return '';
-                const x = xToSvg(point[0]);
-                const y = yToSvg(point[1]);
+                const x = xToSvg(point.time);
+                const y = yToSvg(point.value);
                 return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
               })
               .join(' ');
@@ -271,11 +199,11 @@ export const MetricChart: React.FC<MetricChartProps> = ({ titleKey, unit, intern
                       point !== null && (
                           <circle
                               key={`point-${seriesIndex}-${i}`}
-                              cx={xToSvg(point[0])}
-                              cy={yToSvg(point[1])}
-                              r="3"
+                              cx={xToSvg(point.time)}
+                              cy={yToSvg(point.value)}
+                              r="1.5"
                               fill={color}
-                              onMouseEnter={(e) => handleMouseEnter(e, point[1], s.nameKey)}
+                              onMouseEnter={(e) => handleMouseEnter(e, point.value, s.nameKey)}
                               onMouseLeave={handleMouseLeave}
                           />
                       )
