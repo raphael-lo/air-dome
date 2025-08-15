@@ -25,10 +25,10 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     return (storedLang === 'en' || storedLang === 'zh') ? storedLang : 'en';
   });
 
-  // Load theme from localStorage or default to 'dark'
+  // Load theme from localStorage or default to 'light'
   const [theme, setTheme] = useState<Theme>(() => {
     const storedTheme = localStorage.getItem('app-theme');
-    return (storedTheme === 'light' || storedTheme === 'dark') ? storedTheme : 'dark';
+    return (storedTheme === 'light' || storedTheme === 'dark') ? storedTheme : 'light';
   });
 
   // Effect to update DOM and localStorage when theme changes

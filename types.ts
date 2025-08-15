@@ -1,4 +1,4 @@
-export type View = 'dashboard' | 'alerts' | 'ventilation' | 'lighting' | 'emergency' | 'reports' | 'settings' | 'users' | 'register';
+export type View = 'dashboard' | 'alerts' | 'ventilation' | 'lighting' | 'emergency' | 'reports' | 'settings' | 'users' | 'register' | 'metrics';
 
 export type Language = 'en' | 'zh';
 
@@ -82,7 +82,26 @@ export interface LightingState {
 export interface User {
   id: string;
   username: string;
-  role: 'Admin' | 'Operator';
+  role: 'Admin' | 'Operator' | 'Viewer';
   status: 'active' | 'disabled';
   createdAt: string;
+}
+
+export interface Metric {
+  id: number;
+  mqtt_param: string;
+  display_name: string;
+  device_id: string;
+  group_id: number;
+}
+
+export interface MetricGroup {
+  id: number;
+  name: string;
+}
+
+export interface Section {
+  id: number;
+  name: string;
+  items: (Metric | MetricGroup)[];
 }

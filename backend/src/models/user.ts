@@ -2,7 +2,7 @@ export interface User {
   id?: number;
   username: string;
   password: string;
-  role?: 'Admin' | 'Operator';
+  role?: 'Admin' | 'Operator' | 'Viewer';
   status?: 'active' | 'disabled';
   createdAt?: string;
 }

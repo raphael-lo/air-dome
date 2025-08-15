@@ -1,7 +1,7 @@
 
 import type { Site, Language, View, Alert } from './types';
 import { StatusLevel } from './types';
-import { DashboardIcon, AlertIcon, ReportsIcon, SettingsIcon, UsersIcon } from './components/icons/NavIcons';
+import { DashboardIcon, AlertIcon, ReportsIcon, SettingsIcon, UsersIcon, ChartBarIcon } from './components/icons/NavIcons';
 import { FanIcon, BulbIcon, ShutdownIcon } from './components/icons/MetricIcons';
 
 export const SITES: Site[] = [
@@ -18,6 +18,7 @@ export const NAV_ITEMS: { id: View; icon: React.FC<React.SVGProps<SVGSVGElement>
   { id: 'emergency', icon: ShutdownIcon },
   { id: 'reports', icon: ReportsIcon },
   { id: 'users', icon: UsersIcon },
+  { id: 'metrics', icon: ChartBarIcon },
   { id: 'settings', icon: SettingsIcon },
 ];
 
@@ -81,6 +82,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'reports': 'Reports',
     'settings': 'Settings',
     'users': 'Users',
+    'metrics': 'Metrics',
     
     // Paired Parameters
     'pressure': 'Pressure',
@@ -215,6 +217,15 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'error_creating_user': 'Error creating user.',
     'cannot_disable_admin': 'The default admin user cannot be disabled.',
     'cancel': 'Cancel',
+    'viewer': 'Viewer',
+    'edit': 'Edit',
+    'edit_user': 'Edit User',
+    'update_user': 'Update User',
+    'updating_user': 'Updating user...',
+    'error_updating_user': 'Error updating user.',
+    'leave_blank_to_keep_same': 'Leave blank to keep same',
+    'access_denied': 'Access Denied',
+    'no_permission_user_management': 'You do not have permission to access user management.',
   },
   zh: {
     // General
@@ -266,6 +277,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'reports': '報表',
     'settings': '設置',
     'users': '使用者管理',
+    'metrics': '指標管理',
     
     // Paired Parameters
     'pressure': '壓力',
@@ -400,5 +412,14 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'error_creating_user': '建立使用者時發生錯誤。',
     'cannot_disable_admin': '無法停用預設的管理員使用者。',
     'cancel': '取消',
+    'viewer': '觀察員',
+    'edit': '編輯',
+    'edit_user': '編輯使用者',
+    'update_user': '更新使用者',
+    'updating_user': '正在更新使用者...',
+    'error_updating_user': '更新使用者時發生錯誤。',
+    'leave_blank_to_keep_same': '留空以保持不變',
+    'access_denied': '拒絕存取',
+    'no_permission_user_management': '您沒有權限存取使用者管理。',
   },
 };

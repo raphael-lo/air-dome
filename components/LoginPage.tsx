@@ -5,7 +5,7 @@ import { useAppContext } from '../context/AppContext';
 import { DomeIcon } from './icons/NavIcons';
 import { SpinnerIcon } from './icons/MetricIcons';
 
-export const LoginPage: React.FC<{ onShowRegister: () => void }> = ({ onShowRegister }) => {
+export const LoginPage: React.FC = () => {
     const [username, setUsername] = useState('admin');
     const [password, setPassword] = useState('password');
     const [error, setError] = useState('');
@@ -90,14 +90,7 @@ export const LoginPage: React.FC<{ onShowRegister: () => void }> = ({ onShowRegi
                         </button>
                     </div>
                 </form>
-                <div className="text-center">
-                    <p className="text-sm text-gray-600 dark:text-brand-text-dim">
-                        {t('dont_have_account')}{' '}
-                        <button onClick={onShowRegister} className="font-medium text-brand-accent hover:text-brand-accent-light">
-                            {t('register_now')}
-                        </button>
-                    </p>
-                </div>
+                
             </div>
         </div>
     );

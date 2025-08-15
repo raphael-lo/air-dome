@@ -13,10 +13,20 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView }) => {
   const { t } = useAppContext();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
 
-  const mainNavItems = NAV_ITEMS.filter(item => item.id !== 'emergency');
-  const emergencyNavItem = NAV_ITEMS.find(item => item.id === 'emergency');
+  const filteredNavItems = NAV_ITEMS.filter(item => {
+    if (user?.role === 'Operator' && item.id === 'users') {
+      return false;
+    }
+    if (user?.role === 'Viewer' && (item.id === 'users' || item.id === 'ventilation' || item.id === 'lighting')) {
+      return false;
+    }
+    return true;
+  });
+
+  const mainNavItems = filteredNavItems.filter(item => item.id !== 'emergency');
+  const emergencyNavItem = filteredNavItems.find(item => item.id === 'emergency');
 
   return (
     <div className="flex flex-col items-center w-20 bg-white dark:bg-brand-dark border-r border-gray-200 dark:border-brand-dark-lightest p-4">

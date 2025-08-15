@@ -8,6 +8,8 @@ interface FanControlCardProps {
   onUpdate: (id: string, updates: Partial<Omit<FanSet, 'id' | 'name'>>) => void;
 }
 
+import { useAuth } from '../context/AuthContext';
+
 const ControlSlider: React.FC<{ label: string; value: number; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; disabled: boolean; }> = ({ label, value, onChange, disabled }) => (
   <div className="space-y-1">
     <div className="flex justify-between items-baseline text-sm">
@@ -28,6 +30,7 @@ const ControlSlider: React.FC<{ label: string; value: number; onChange: (e: Reac
 
 export const FanControlCard: React.FC<FanControlCardProps> = ({ fanSet, onUpdate }) => {
   const { t } = useAppContext();
+  const { user } = useAuth();
   const isOff = fanSet.status === 'off';
   const isManual = fanSet.mode === 'manual';
   const slidersDisabled = isOff || !isManual;
@@ -38,6 +41,10 @@ export const FanControlCard: React.FC<FanControlCardProps> = ({ fanSet, onUpdate
 
   const handlePowerToggle = () => {
       onUpdate(fanSet.id, { status: isOff ? 'on' : 'off' })
+  }
+
+  if (user?.role === 'Viewer') {
+    return null;
   }
 
   return (

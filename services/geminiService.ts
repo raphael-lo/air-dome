@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import type { AirDomeData, Alert, FanSet, LightingState, User } from '../types';
+import type { AirDomeData, Alert, FanSet, LightingState, User, Metric, MetricGroup, Section } from '../types';
 import { StatusLevel } from '../types';
 import { initialMockAlerts } from '../constants';
 
@@ -110,7 +110,7 @@ export const fetchUsers = async ({ authenticatedFetch }: AuthenticatedFetch): Pr
   return response.json();
 };
 
-export const createUser = async (userData: { username: string, password: string, role: 'Admin' | 'Operator' }, { authenticatedFetch }: AuthenticatedFetch): Promise<User> => {
+export const createUser = async (userData: { username: string, password: string, role: 'Admin' | 'Operator' | 'Viewer' }, { authenticatedFetch }: AuthenticatedFetch): Promise<User> => {
   const response = await authenticatedFetch(`${BASE_URL}/users`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -128,4 +128,122 @@ export const updateUserStatus = async (userId: string, status: 'active' | 'disab
   });
   if (!response.ok) throw new Error('Failed to update user status');
   return response.json();
+};
+
+export const updateUser = async (userId: string, userData: { username?: string, password?: string, role?: 'Admin' | 'Operator' | 'Viewer' }, { authenticatedFetch }: AuthenticatedFetch): Promise<User> => {
+  const response = await authenticatedFetch(`${BASE_URL}/users/${userId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(userData),
+  });
+  if (!response.ok) throw new Error('Failed to update user');
+  return response.json();
+};
+
+export const fetchMetrics = async ({ authenticatedFetch }: AuthenticatedFetch): Promise<Metric[]> => {
+  const response = await authenticatedFetch(`${BASE_URL}/metrics`);
+  if (!response.ok) throw new Error('Failed to fetch metrics');
+  return response.json();
+};
+
+export const createMetric = async (metricData: Omit<Metric, 'id'>, { authenticatedFetch }: AuthenticatedFetch): Promise<Metric> => {
+  const response = await authenticatedFetch(`${BASE_URL}/metrics`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(metricData),
+  });
+  if (!response.ok) throw new Error('Failed to create metric');
+  return response.json();
+};
+
+export const updateMetric = async (metricId: number, metricData: Partial<Omit<Metric, 'id'>>, { authenticatedFetch }: AuthenticatedFetch): Promise<Metric> => {
+  const response = await authenticatedFetch(`${BASE_URL}/metrics/${metricId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(metricData),
+  });
+  if (!response.ok) throw new Error('Failed to update metric');
+  return response.json();
+};
+
+export const deleteMetric = async (metricId: number, { authenticatedFetch }: AuthenticatedFetch): Promise<void> => {
+  const response = await authenticatedFetch(`${BASE_URL}/metrics/${metricId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete metric');
+};
+
+export const fetchMetricGroups = async ({ authenticatedFetch }: AuthenticatedFetch): Promise<MetricGroup[]> => {
+  const response = await authenticatedFetch(`${BASE_URL}/metric-groups`);
+  if (!response.ok) throw new Error('Failed to fetch metric groups');
+  return response.json();
+};
+
+export const createMetricGroup = async (metricGroupData: Omit<MetricGroup, 'id'>, { authenticatedFetch }: AuthenticatedFetch): Promise<MetricGroup> => {
+  const response = await authenticatedFetch(`${BASE_URL}/metric-groups`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(metricGroupData),
+  });
+  if (!response.ok) throw new Error('Failed to create metric group');
+  return response.json();
+};
+
+export const updateMetricGroup = async (metricGroupId: number, metricGroupData: Partial<Omit<MetricGroup, 'id'>>, { authenticatedFetch }: AuthenticatedFetch): Promise<MetricGroup> => {
+  const response = await authenticatedFetch(`${BASE_URL}/metric-groups/${metricGroupId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(metricGroupData),
+  });
+  if (!response.ok) throw new Error('Failed to update metric group');
+  return response.json();
+};
+
+export const deleteMetricGroup = async (metricGroupId: number, { authenticatedFetch }: AuthenticatedFetch): Promise<void> => {
+  const response = await authenticatedFetch(`${BASE_URL}/metric-groups/${metricGroupId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete metric group');
+};
+
+export const fetchSections = async ({ authenticatedFetch }: AuthenticatedFetch): Promise<Section[]> => {
+  const response = await authenticatedFetch(`${BASE_URL}/sections`);
+  if (!response.ok) throw new Error('Failed to fetch sections');
+  return response.json();
+};
+
+export const createSection = async (sectionData: Omit<Section, 'id' | 'items'>, { authenticatedFetch }: AuthenticatedFetch): Promise<Section> => {
+  const response = await authenticatedFetch(`${BASE_URL}/sections`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sectionData),
+  });
+  if (!response.ok) throw new Error('Failed to create section');
+  return response.json();
+};
+
+export const updateSection = async (sectionId: number, sectionData: Partial<Omit<Section, 'id' | 'items'>>, { authenticatedFetch }: AuthenticatedFetch): Promise<Section> => {
+  const response = await authenticatedFetch(`${BASE_URL}/sections/${sectionId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sectionData),
+  });
+  if (!response.ok) throw new Error('Failed to update section');
+  return response.json();
+};
+
+export const deleteSection = async (sectionId: number, { authenticatedFetch }: AuthenticatedFetch): Promise<void> => {
+  const response = await authenticatedFetch(`${BASE_URL}/sections/${sectionId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to delete section');
+};
+
+export const updateSectionItems = async (sectionId: number, items: any[], { authenticatedFetch }: AuthenticatedFetch): Promise<void> => {
+  const response = await authenticatedFetch(`${BASE_URL}/sections/${sectionId}/items`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ items }),
+  });
+  if (!response.ok) throw new Error('Failed to update section items');
 };

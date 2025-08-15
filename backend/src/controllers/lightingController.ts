@@ -25,20 +25,37 @@ export const getLightingState = (req: Request, res: Response) => {
 export const updateLightingState = (req: Request, res: Response) => {
   const { lightsOn, brightness } = req.body;
 
-  db.run('UPDATE lighting_state SET lightsOn = ?, brightness = ?', [lightsOn, brightness], function(err) {
+  if (lightsOn === undefined && brightness === undefined) {
+    return res.status(400).json({ message: 'No fields to update' });
+  }
+
+  let updateQuery = 'UPDATE lighting_state SET ';
+  const params: any[] = [];
+
+  if (lightsOn !== undefined) {
+    updateQuery += 'lightsOn = ?, ';
+    params.push(lightsOn);
+  }
+
+  if (brightness !== undefined) {
+    updateQuery += 'brightness = ?, ';
+    params.push(brightness);
+  }
+
+  updateQuery = updateQuery.slice(0, -2); // Remove trailing comma and space
+  updateQuery += ' WHERE id = 1';
+
+  db.run(updateQuery, params, function(err) {
     if (err) {
       res.status(500).json({ message: 'Error updating lighting state', error: err.message });
-    } else if (this.changes === 0) {
-      // If no row was updated, it means it didn't exist, so insert it
-      db.run('INSERT INTO lighting_state (lightsOn, brightness) VALUES (?, ?)', [lightsOn, brightness], (err) => {
+    } else {
+      db.get('SELECT * FROM lighting_state WHERE id = 1', (err, row: LightingState) => {
         if (err) {
-          res.status(500).json({ message: 'Error inserting lighting state', error: err.message });
+          res.status(500).json({ message: 'Error fetching updated lighting state', error: err.message });
         } else {
-          res.json({ lightsOn, brightness });
+          res.json(row);
         }
       });
-    } else {
-      res.json({ lightsOn, brightness });
     }
   });
 };
