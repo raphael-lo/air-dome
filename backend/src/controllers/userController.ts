@@ -66,7 +66,7 @@ export const login = (req: Request, res: Response) => {
 };
 
 export const getUsers = (req: Request, res: Response) => {
-  db.all('SELECT id, username, role, status, createdAt FROM users', [], (err, rows) => {
+  db.all('SELECT id, username, role, status, created_at FROM users', [], (err, rows) => {
     if (err) {
       return res.status(500).json({ message: 'Error fetching users', error: err.message });
     }

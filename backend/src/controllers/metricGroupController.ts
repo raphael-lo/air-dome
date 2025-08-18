@@ -1,50 +1,38 @@
 import { Request, Response } from 'express';
-import db from '../services/databaseService';
-import { MetricGroup } from '../models/metricGroup';
+import * as metricGroupModel from '../models/metricGroup';
 
-export const createMetricGroup = (req: Request, res: Response) => {
-  const { name } = req.body;
-  db.run('INSERT INTO metric_groups (name) VALUES (?)', [name], function(err) {
-    if (err) {
-      return res.status(500).json({ message: 'Error creating metric group', error: err.message });
+export const createMetricGroup = async (req: Request, res: Response) => {
+    try {
+        const group = await metricGroupModel.createMetricGroup(req.body);
+        res.status(201).json(group);
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating metric group', error });
     }
-    res.status(201).json({ message: 'Metric group created', metricGroupId: this.lastID });
-  });
 };
 
-export const getMetricGroups = (req: Request, res: Response) => {
-  db.all('SELECT * FROM metric_groups', (err, rows: MetricGroup[]) => {
-    if (err) {
-      res.status(500).json({ message: 'Error fetching metric groups', error: err.message });
-    } else {
-      res.json(rows);
+export const getMetricGroups = async (req: Request, res: Response) => {
+    try {
+        const groups = await metricGroupModel.getMetricGroups();
+        res.json(groups);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching metric groups', error });
     }
-  });
 };
 
-export const updateMetricGroup = (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { name } = req.body;
-  db.run('UPDATE metric_groups SET name = ? WHERE id = ?', [name, id], function(err) {
-    if (err) {
-      res.status(500).json({ message: 'Error updating metric group', error: err.message });
-    } else if (this.changes === 0) {
-      res.status(404).json({ message: 'Metric group not found' });
-    } else {
-      res.json({ message: 'Metric group updated successfully' });
+export const updateMetricGroup = async (req: Request, res: Response) => {
+    try {
+        const group = await metricGroupModel.updateMetricGroup(Number(req.params.id), req.body);
+        res.json(group);
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating metric group', error });
     }
-  });
 };
 
-export const deleteMetricGroup = (req: Request, res: Response) => {
-  const { id } = req.params;
-  db.run('DELETE FROM metric_groups WHERE id = ?', [id], function(err) {
-    if (err) {
-      res.status(500).json({ message: 'Error deleting metric group', error: err.message });
-    } else if (this.changes === 0) {
-      res.status(404).json({ message: 'Metric group not found' });
-    } else {
-      res.json({ message: 'Metric group deleted successfully' });
+export const deleteMetricGroup = async (req: Request, res: Response) => {
+    try {
+        await metricGroupModel.deleteMetricGroup(Number(req.params.id));
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting metric group', error });
     }
-  });
 };

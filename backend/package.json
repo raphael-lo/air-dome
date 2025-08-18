@@ -23,6 +23,7 @@
     "mqtt": "^5.14.0",
     "pg": "^8.16.3",
     "sqlite3": "^5.1.7",
+    "uuid": "^8.3.2",
     "ws": "^8.18.3"
   },
   "devDependencies": {
@@ -33,6 +34,7 @@
     "@types/node": "^24.2.1",
     "@types/pg": "^8.15.5",
     "@types/sqlite3": "^3.1.11",
+    "@types/uuid": "^10.0.0",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"

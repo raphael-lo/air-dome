@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useMemo, useEffect } from 'react';
-import type { User } from '../types';
+import type { User } from '../backend/src/types';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -67,7 +67,24 @@ export const AuthContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
     if (token) {
       headers.set('Authorization', `Bearer ${token}`);
     }
-    return fetch(input, { ...init, headers });
+    let url = input;
+    if (typeof input === 'string') {
+      // If the input is already a full URL, use it as is
+      if (input.startsWith('http://') || input.startsWith('https://')) {
+        url = input;
+      } else {
+        // Handle relative paths
+        // Ensure config.apiBaseUrl ends with /api
+        const baseApiUrl = config.apiBaseUrl.endsWith('/api') ? config.apiBaseUrl : `${config.apiBaseUrl}/api`;
+
+        // If the input path already starts with /api, remove it to avoid duplication
+        const path = input.startsWith('/api/') ? input.substring(5) : input.startsWith('api/') ? input.substring(4) : input;
+
+        url = `${baseApiUrl}/${path}`;
+      }
+    }
+
+    return fetch(url, { ...init, headers });
   };
 
   const value = useMemo(() => ({

@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useContext, useMemo, useEffect } from 'react';
-import type { Site, Language, Theme } from '../types';
+import type { Site, Language, Theme } from '../backend/src/types';
 import { SITES, TRANSLATIONS } from '../constants';
 
 interface AppContextType {

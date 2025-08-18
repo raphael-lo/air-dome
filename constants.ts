@@ -1,7 +1,8 @@
 
-import type { Site, Language, View, Alert } from './types';
-import { StatusLevel } from './types';
-import { DashboardIcon, AlertIcon, ReportsIcon, SettingsIcon, UsersIcon, ChartBarIcon } from './components/icons/NavIcons';
+import React from 'react';
+import type { Site, Language, View, Alert } from './backend/src/types';
+import { StatusLevel } from './backend/src/types';
+import { DashboardIcon, AlertIcon, ReportsIcon, SettingsIcon, UsersIcon, ChartBarIcon, SettingAlertIcon } from './components/icons/NavIcons';
 import { FanIcon, BulbIcon, ShutdownIcon } from './components/icons/MetricIcons';
 
 export const SITES: Site[] = [
@@ -10,7 +11,7 @@ export const SITES: Site[] = [
   { id: 'site_c', nameKey: 'site_c' },
 ];
 
-export const NAV_ITEMS: { id: View; icon: React.FC<React.SVGProps<SVGSVGElement>> }[] = [
+export const NAV_ITEMS: { id: View; icon: React.FC<React.SVGProps<SVGSVGElement>>; allowedRoles?: string[] }[] = [
   { id: 'dashboard', icon: DashboardIcon },
   { id: 'alerts', icon: AlertIcon },
   { id: 'ventilation', icon: FanIcon },
@@ -20,14 +21,15 @@ export const NAV_ITEMS: { id: View; icon: React.FC<React.SVGProps<SVGSVGElement>
   { id: 'users', icon: UsersIcon },
   { id: 'metrics', icon: ChartBarIcon },
   { id: 'settings', icon: SettingsIcon },
+  { id: 'alert_settings', icon: SettingAlertIcon, allowedRoles: ['Admin'] },
 ];
 
 export const initialMockAlerts: Alert[] = [
-  { id: '1', siteId: 'site_a', parameter: 'membrane_health', message: 'membrane_defect_alert', severity: StatusLevel.Danger, timestamp: new Date(Date.now() - 3600000).toISOString(), status: 'active' },
-  { id: '2', siteId: 'site_a', parameter: 'internal_air_quality_co2', message: 'high_co2_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 7200000).toISOString(), status: 'active' },
-  { id: '3', siteId: 'site_b', parameter: 'internal_pressure', message: 'high_pressure_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 86400000).toISOString(), status: 'resolved' },
-  { id: '4', siteId: 'site_a', parameter: 'internal_noise_level', message: 'noise_level_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 172800000).toISOString(), status: 'acknowledged' },
-  { id: '5', siteId: 'site_c', parameter: 'power_consumption', message: 'high_pressure_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 172800000).toISOString(), status: 'active' },
+  { id: '1', site_id: 'site_a', parameter: 'membrane_health', message: 'membrane_defect_alert', severity: StatusLevel.Danger, timestamp: new Date(Date.now() - 3600000).toISOString(), status: 'active' },
+  { id: '2', site_id: 'site_a', parameter: 'internal_air_quality_co2', message: 'high_co2_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 7200000).toISOString(), status: 'active' },
+  { id: '3', site_id: 'site_b', parameter: 'internal_pressure', message: 'high_pressure_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 86400000).toISOString(), status: 'resolved' },
+  { id: '4', site_id: 'site_a', parameter: 'internal_noise_level', message: 'noise_level_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 172800000).toISOString(), status: 'acknowledged' },
+  { id: '5', site_id: 'site_c', parameter: 'power_consumption', message: 'high_pressure_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 172800000).toISOString(), status: 'active' },
 ];
 
 export const TRANSLATIONS: Record<Language, Record<string, string>> = {
@@ -97,38 +99,30 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // Parameters
     'internal_pressure': 'Internal Pressure',
     'external_pressure': 'External Pressure',
+    'metric_internal_pressure_display_name': 'Internal Pressure', // Added
+    'metric_external_pressure_display_name': 'External Pressure', // Added
+    'metric_internal_temperature_display_name': 'Internal Temperature', // Added
+    'metric_external_temperature_display_name': 'External Temperature', // Added
     'fan_speed': 'Fan Speed',
     'air_exchange_rate': 'Air Exchange Rate',
     'power_consumption': 'Power Consumption',
     'voltage': 'Voltage',
     'current': 'Current',
-    'external_wind_speed': 'External Wind Speed',
-    'internal_air_quality_pm25': 'Internal (PM2.5)',
-    'external_air_quality_pm25': 'External (PM2.5)',
-    'internal_air_quality_co2': 'Internal (CO2)',
-    'external_air_quality_co2': 'External (CO2)',
-    'internal_air_quality_o2': 'Internal (O2)',
-    'external_air_quality_o2': 'External (O2)',
-    'internal_air_quality_co': 'Internal (CO)',
-    'external_air_quality_co': 'External (CO)',
-    'internal_temperature': 'Internal Temperature',
-    'external_temperature': 'External Temperature',
-    'internal_humidity': 'Internal Humidity',
-    'external_humidity': 'External Humidity',
-    'membrane_health': 'Membrane Health',
-    'internal_noise_level': 'Internal Noise Level',
-    'external_noise_level': 'External Noise Level',
-    'base_corner_pressure': 'Base Corner Pressure',
-    'internal_lux_level': 'Internal Lux Level',
-    'internal_lighting_status': 'Internal Lighting Status',
-    'air_shutter_status': 'Air Shutter Status',
-    
+
     // Metric Groups
     'dome_integrity': 'Dome Integrity',
     'environment': 'Environment',
     'air_quality': 'Air Quality',
     'systems_status': 'Systems Status',
     'power': 'Power',
+    'group_pressure_name': 'Pressure Group',
+    'group_temperature_name': 'Temperature Group',
+
+    // Sections
+    'section_dome_integrity_name': 'Dome Integrity',
+    'section_environment_name': 'Environment',
+    'section_air_quality_name': 'Air Quality',
+    'section_systems_status_name': 'Systems Status',
 
     // Alerts
     'active_alerts': 'Active Alerts',
@@ -226,6 +220,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'leave_blank_to_keep_same': 'Leave blank to keep same',
     'access_denied': 'Access Denied',
     'no_permission_user_management': 'You do not have permission to access user management.',
+    'dome_metrics': 'Dome Metrics',
+    'new_dome_metrics': 'New Dome Metrics',
+    '3_minutes': '3 Minutes',
   },
   zh: {
     // General
@@ -292,20 +289,16 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // Parameters
     'internal_pressure': '內部壓力',
     'external_pressure': '外部壓力',
+    'metric_internal_pressure_display_name': '內部壓力', // Added
+    'metric_external_pressure_display_name': '外部壓力', // Added
+    'metric_internal_temperature_display_name': '內部溫度', // Added
+    'metric_external_temperature_display_name': '外部溫度', // Added
     'fan_speed': '風扇速度',
     'air_exchange_rate': '換氣率',
     'power_consumption': '功耗',
     'voltage': '電壓',
     'current': '電流',
     'external_wind_speed': '外部風速',
-    'internal_air_quality_pm25': '內部 (PM2.5)',
-    'external_air_quality_pm25': '外部 (PM2.5)',
-    'internal_air_quality_co2': '內部 (CO2)',
-    'external_air_quality_co2': '外部 (CO2)',
-    'internal_air_quality_o2': '內部 (O2)',
-    'external_air_quality_o2': '外部 (O2)',
-    'internal_air_quality_co': '內部 (CO)',
-    'external_air_quality_co': '外部 (CO)',
     'internal_temperature': '內部溫度',
     'external_temperature': '外部溫度',
     'internal_humidity': '內部濕度',
@@ -317,6 +310,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'internal_lux_level': '內部光照度',
     'internal_lighting_status': '內部照明狀態',
     'air_shutter_status': '氣閘門狀態',
+    'metric_pressure_display_name': '壓力',
+    'metric_temperature_display_name': '溫度',
 
     // Metric Groups
     'dome_integrity': '穹頂完整性',
@@ -324,6 +319,14 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'air_quality': '空氣品質',
     'systems_status': '系統狀態',
     'power': '電力',
+    'group_pressure_name': '壓力組',
+    'group_temperature_name': '溫度組',
+
+    // Sections
+    'section_dome_integrity_name': '穹頂完整性',
+    'section_environment_name': '環境狀況',
+    'section_air_quality_name': '空氣品質',
+    'section_systems_status_name': '系統狀態',
 
     // Alerts
     'active_alerts': '活躍警報',
@@ -421,5 +424,45 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'leave_blank_to_keep_same': '留空以保持不變',
     'access_denied': '拒絕存取',
     'no_permission_user_management': '您沒有權限存取使用者管理。',
+    'alert_settings': '警報設置',
+    'current_alert_thresholds': '當前警報閾值',
+    'add_new_threshold': '新增閾值',
+    'no_alert_thresholds_defined': '未定義警報閾值。',
+    'metric': '指標',
+    'min_warning': '最小警告值',
+    'max_warning': '最大警告值',
+    'min_alert': '最小警報值',
+    'max_alert': '最大警報值',
+    'actions': '操作',
+    'edit_alert_threshold': '編輯警報閾值',
+    'add_alert_threshold': '新增警報閾值',
+    'select_metric': '選擇指標',
+    'save': '儲存',
+    'confirm_delete_alert_threshold': '您確定要刪除 {{metricName}} 的警報閾值嗎？',
+    'internalPressure': '內部壓力',
+    'externalPressure': '外部壓力',
+    'basePressure': '基礎壓力',
+    'fanSpeed': '風扇速度',
+    'internalTemperature': '內部溫度',
+    'externalTemperature': '外部溫度',
+    'internalHumidity': '內部濕度',
+    'externalHumidity': '外部濕度',
+    'externalWindSpeed': '外部風速',
+    'internalPM25': '內部 PM2.5',
+    'externalPM25': '外部 PM2.5',
+    'internalCO2': '內部 CO2',
+    'externalCO2': '外部 CO2',
+    'internalO2': '內部 O2',
+    'externalO2': '外部 O2',
+    'internalCO': '內部 CO',
+    'externalCO': '外部 CO',
+    'airExchangeRate': '換氣率',
+    'internalNoise': '內部噪音',
+    'externalNoise': '外部噪音',
+    'internalLux': '內部光照',
+    'powerConsumption': '功耗',
+    'dome_metrics': '氣膜館指標',
+    'new_dome_metrics': '新氣膜館指標',
+    '3_minutes': '3分鐘',
   },
 };

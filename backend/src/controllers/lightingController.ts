@@ -23,18 +23,18 @@ export const getLightingState = (req: Request, res: Response) => {
 };
 
 export const updateLightingState = (req: Request, res: Response) => {
-  const { lightsOn, brightness } = req.body;
+  const { lights_on, brightness } = req.body;
 
-  if (lightsOn === undefined && brightness === undefined) {
+  if (lights_on === undefined && brightness === undefined) {
     return res.status(400).json({ message: 'No fields to update' });
   }
 
   let updateQuery = 'UPDATE lighting_state SET ';
   const params: any[] = [];
 
-  if (lightsOn !== undefined) {
-    updateQuery += 'lightsOn = ?, ';
-    params.push(lightsOn);
+  if (lights_on !== undefined) {
+    updateQuery += 'lights_on = ?, ';
+    params.push(lights_on);
   }
 
   if (brightness !== undefined) {
@@ -43,13 +43,12 @@ export const updateLightingState = (req: Request, res: Response) => {
   }
 
   updateQuery = updateQuery.slice(0, -2); // Remove trailing comma and space
-  updateQuery += ' WHERE id = 1';
 
   db.run(updateQuery, params, function(err) {
     if (err) {
       res.status(500).json({ message: 'Error updating lighting state', error: err.message });
     } else {
-      db.get('SELECT * FROM lighting_state WHERE id = 1', (err, row: LightingState) => {
+      db.get('SELECT * FROM lighting_state LIMIT 1', (err, row: LightingState) => {
         if (err) {
           res.status(500).json({ message: 'Error fetching updated lighting state', error: err.message });
         } else {

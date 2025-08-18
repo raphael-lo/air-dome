@@ -4,5 +4,5 @@ export interface User {
   password: string;
   role?: 'Admin' | 'Operator' | 'Viewer';
   status?: 'active' | 'disabled';
-  createdAt?: string;
+  created_at?: string;
 }

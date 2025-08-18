@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import mqttClient from '../services/mqttService';
+import { mqttClient } from '../services/mqttService';
 
 export const postSensorData = (req: Request, res: Response) => {
   const data = req.body;
@@ -12,7 +12,7 @@ export const postSensorData = (req: Request, res: Response) => {
 
   try {
     const message = JSON.stringify(data);
-    mqttClient.publish(topic, message, (err) => {
+    mqttClient.publish(topic, message, (err: Error | undefined) => {
       if (err) {
         console.error('Failed to publish to MQTT', err);
         return res.status(500).json({ message: 'Failed to publish to MQTT' });

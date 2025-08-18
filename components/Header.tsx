@@ -2,7 +2,7 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
 import { SiteIcon, LanguageIcon } from './icons/NavIcons';
-import type { View } from '../types';
+import type { View } from '../backend/src/types';
 
 interface HeaderProps {
   currentView: View;

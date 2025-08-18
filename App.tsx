@@ -10,7 +10,8 @@ import { Reports } from './components/Reports';
 import { Settings } from './components/Settings';
 import { Users } from './components/Users';
 import { Metrics } from './components/Metrics';
-import type { View, FanSet, LightingState } from './types';
+import { AlertSetting } from './components/AlertSetting';
+import type { View, FanSet, LightingState } from './backend/src/types';
 import { useAppContext } from './context/AppContext';
 import { FanControlCard } from './components/FanControlCard';
 import { LightingControlCard } from './components/LightingControl';
@@ -76,9 +77,6 @@ const Ventilation: React.FC = () => {
     );
 };
 
-import { LightingControlCard } from './components/LightingControl';
-
-
 const Lighting: React.FC = () => {
     const { t } = useAppContext();
     const { authenticatedFetch } = useAuth();
@@ -124,8 +122,8 @@ const Lighting: React.FC = () => {
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                    <LightingControlCard 
-                        lightsOn={lightingState.lightsOn}
-                        onPowerToggle={() => handleUpdate({ lightsOn: !lightingState.lightsOn })}
+                        lightsOn={lightingState.lights_on}
+                        onPowerToggle={() => handleUpdate({ lights_on: !lightingState.lights_on })}
                         brightness={lightingState.brightness}
                         onBrightnessChange={(val) => handleUpdate({ brightness: val })}
                    />
@@ -253,15 +251,24 @@ const Emergency: React.FC = () => {
     );
 };
 
+import { config } from './config';
+
 const AppContent: React.FC = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { t } = useAppContext(); // Add this line
   const [currentView, setCurrentView] = useState<View>('dashboard');
+
+  // Log API and WebSocket URLs to console for debugging
+  useEffect(() => {
+    console.log('API Base URL:', config.apiBaseUrl);
+    console.log('WebSocket URL:', config.wsUrl);
+  }, []);
 
   if (!isAuthenticated) {
     return <LoginPage />;
   }
 
-  const renderView = () => {
+  const renderView = (currentUser: typeof user) => {
     switch (currentView) {
       case 'dashboard':
         return <Dashboard />;
@@ -281,6 +288,16 @@ const AppContent: React.FC = () => {
         return <Users />;
       case 'metrics':
         return <Metrics />;
+      case 'alert_settings':
+        if (currentUser?.role !== 'Admin') {
+          return (
+            <div className="flex flex-col items-center justify-center h-full text-gray-600 dark:text-brand-text-dim">
+              <h2 className="text-2xl font-bold mb-4">{t('access_denied')}</h2>
+              <p>{t('no_permission_user_management')}</p>
+            </div>
+          );
+        }
+        return <AlertSetting />;
       default:
         return <Dashboard />;
     }
@@ -292,7 +309,7 @@ const AppContent: React.FC = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header currentView={currentView} />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-brand-dark-light p-4 sm:p-6 lg:p-8">
-          {renderView()}
+          {renderView(user)}
         </main>
       </div>
     </div>

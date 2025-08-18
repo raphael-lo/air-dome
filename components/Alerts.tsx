@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { Alert } from '../types';
+import type { Alert } from '../backend/src/types';
 import { useAppContext } from '../context/AppContext';
 import { SeverityBadge } from './SeverityBadge';
 import { fetchAlerts, acknowledgeAlert } from '../services/geminiService';

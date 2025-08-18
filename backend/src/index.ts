@@ -14,6 +14,7 @@ import httpSensorRouter from './routes/httpSensor';
 import metricRouter from './routes/metric';
 import metricGroupRouter from './routes/metricGroup';
 import sectionRouter from './routes/section';
+import domeMetricsRouter from './routes/domeMetrics';
 import './services/databaseService';
 import './services/mqttService';
 import './init_db'; // Add this line to ensure DB is initialized on startup
@@ -43,6 +44,7 @@ app.use('/api', authenticateToken, alertThresholdsRouter);
 app.use('/api', metricRouter);
 app.use('/api', metricGroupRouter);
 app.use('/api', sectionRouter);
+app.use('/api', domeMetricsRouter);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Air Dome Backend is running!');

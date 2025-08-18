@@ -3,10 +3,11 @@ import React, { useState } from 'react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { useAirDomeData } from '../hooks/useAirDomeData';
 import { ReportsIcon } from './icons/NavIcons';
 import { ExportIcon, SpinnerIcon } from './icons/MetricIcons';
-import type { AirDomeData } from '../types';
+import type { AirDomeData } from '../backend/src/types';
 
 type ReportableMetric = keyof Pick<AirDomeData, 'internalPressure' | 'powerConsumption' | 'internalCO2' | 'externalWindSpeed' | 'fanSpeed'>;
 
@@ -20,7 +21,8 @@ const reportOptions: { value: ReportableMetric; labelKey: string; unit: string }
 
 export const Reports: React.FC = () => {
     const { t, selectedSite } = useAppContext();
-    const { data: domeData, isLoading } = useAirDomeData(selectedSite);
+    const { authenticatedFetch } = useAuth();
+    const { data: domeData, isLoading } = useAirDomeData(selectedSite, authenticatedFetch);
 
     const [reportType, setReportType] = useState<ReportableMetric>(reportOptions[0].value);
     const [timeRange, setTimeRange] = useState('daily');

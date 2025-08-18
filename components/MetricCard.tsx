@@ -1,5 +1,5 @@
 import React from 'react';
-import type { StatusLevel } from '../types';
+import type { StatusLevel } from '../backend/src/types';
 
 interface MetricCardProps {
   title: string;

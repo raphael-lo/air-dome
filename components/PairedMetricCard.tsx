@@ -1,5 +1,5 @@
 import React from 'react';
-import { StatusLevel } from '../types';
+import { StatusLevel } from '../backend/src/types';
 import { useAppContext } from '../context/AppContext';
 
 interface MetricData {
@@ -8,11 +8,14 @@ interface MetricData {
 }
 
 interface PairedMetricCardProps {
-  titleKey: string;
+  title: string;
   icon: React.ReactElement<{ className?: string }>;
   internalData: MetricData;
   externalData: MetricData;
-  unit: string;
+  internalUnit: string;
+  externalUnit: string;
+  internalLabel: string;
+  externalLabel: string;
   onClick?: () => void;
 }
 
@@ -47,7 +50,7 @@ const DataRow: React.FC<{ label: string; data: MetricData; unit: string }> = ({ 
 };
 
 
-export const PairedMetricCard: React.FC<PairedMetricCardProps> = ({ titleKey, icon, internalData, externalData, unit, onClick }) => {
+export const PairedMetricCard: React.FC<PairedMetricCardProps> = ({ title, icon, internalData, externalData, internalUnit, externalUnit, internalLabel, externalLabel, onClick }) => {
   const { t } = useAppContext();
   const combinedStatus = getCombinedStatus(internalData.status, externalData.status);
   const colorClass = statusColors[combinedStatus] || 'bg-gray-400';
@@ -65,7 +68,7 @@ export const PairedMetricCard: React.FC<PairedMetricCardProps> = ({ titleKey, ic
         <div>
             <div className="flex items-start justify-between mb-2">
                 <div className="flex-1">
-                    <h3 className="text-base font-semibold text-gray-800 dark:text-brand-text">{t(titleKey)}</h3>
+                    <h3 className="text-base font-semibold text-gray-800 dark:text-brand-text">{title}</h3>
                 </div>
                 <div className="text-brand-accent-light opacity-50 dark:opacity-30">
                 {React.cloneElement(icon, { className: 'h-8 w-8' })}
@@ -73,8 +76,8 @@ export const PairedMetricCard: React.FC<PairedMetricCardProps> = ({ titleKey, ic
             </div>
 
             <div className="space-y-2 mt-2">
-                <DataRow label={t('internal')} data={internalData} unit={unit} />
-                <DataRow label={t('external')} data={externalData} unit={unit} />
+                <DataRow label={internalLabel || t('internal')} data={internalData} unit={internalUnit} />
+                <DataRow label={externalLabel || t('external')} data={externalData} unit={externalUnit} />
             </div>
         </div>
       

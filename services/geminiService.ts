@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
-import type { AirDomeData, Alert, FanSet, LightingState, User, Metric, MetricGroup, Section } from '../types';
-import { StatusLevel } from '../types';
+import type { AirDomeData, Alert, FanSet, LightingState, User, Metric, MetricGroup, Section, SectionItem } from '../backend/src/types';
+import { StatusLevel } from '../backend/src/types';
 import { initialMockAlerts } from '../constants';
 
 // IMPORTANT: This check is for the web demo environment.
@@ -239,11 +239,52 @@ export const deleteSection = async (sectionId: number, { authenticatedFetch }: A
   if (!response.ok) throw new Error('Failed to delete section');
 };
 
-export const updateSectionItems = async (sectionId: number, items: any[], { authenticatedFetch }: AuthenticatedFetch): Promise<void> => {
-  const response = await authenticatedFetch(`${BASE_URL}/sections/${sectionId}/items`, {
+export const updateSectionOrder = async (sections: { id: number, item_order: number }[], { authenticatedFetch }: AuthenticatedFetch): Promise<void> => {
+  const response = await authenticatedFetch(`${BASE_URL}/sections/order`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ items }),
+    body: JSON.stringify(sections),
   });
-  if (!response.ok) throw new Error('Failed to update section items');
+  if (!response.ok) throw new Error('Failed to update section order');
+};
+
+export const fetchSectionItems = async (sectionId: number, { authenticatedFetch }: AuthenticatedFetch): Promise<SectionItem[]> => {
+  const response = await authenticatedFetch(`${BASE_URL}/sections/${sectionId}/items`);
+  if (!response.ok) throw new Error('Failed to fetch section items');
+  return response.json();
+};
+
+export const addSectionItem = async (sectionId: number, item: Omit<SectionItem, 'id' | 'section_id'>, { authenticatedFetch }: AuthenticatedFetch): Promise<SectionItem> => {
+  console.log('addSectionItem called with:', { sectionId, item });
+  const url = `${BASE_URL}/sections/${sectionId}/items`;
+  console.log('addSectionItem URL:', url);
+  const response = await authenticatedFetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(item),
+  });
+  console.log('addSectionItem response status:', response.status);
+  console.log('addSectionItem response ok:', response.ok);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('addSectionItem error response body:', errorText);
+    throw new Error(`Failed to add item to section: ${response.status} ${response.statusText} - ${errorText}`);
+  }
+  return response.json();
+};
+
+export const removeSectionItem = async (sectionId: number, itemId: number, { authenticatedFetch }: AuthenticatedFetch): Promise<void> => {
+  const response = await authenticatedFetch(`${BASE_URL}/sections/${sectionId}/items/${itemId}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) throw new Error('Failed to remove item from section');
+};
+
+export const updateSectionItems = async (sectionId: number, items: SectionItem[], { authenticatedFetch }: AuthenticatedFetch): Promise<void> => {
+  const response = await authenticatedFetch(`${BASE_URL}/sections/${sectionId}/items/order`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(items),
+  });
+  if (!response.ok) throw new Error('Failed to update section item order');
 };

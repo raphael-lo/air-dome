@@ -8,6 +8,29 @@ const bucket = 'my-bucket';
 const influxDB = new InfluxDB({ url, token });
 const writeApi = influxDB.getWriteApi(org, bucket);
 
+/**
+ * Writes a single metric value to InfluxDB.
+ * @param measurement The InfluxDB measurement (e.g., 'sensor_data').
+ * @param field The metric field name (e.g., 'internalTemperature').
+ * @param value The numeric value of the metric.
+ */
+export const writeMetric = (measurement: string, field: string, value: number, tags?: Record<string, string>) => {
+  const point = new Point(measurement)
+    .floatField(field, value)
+    .timestamp(new Date()); // Use current server time for the metric
+
+  if (tags) {
+    for (const [key, val] of Object.entries(tags)) {
+      point.tag(key, val);
+    }
+  }
+
+  writeApi.writePoint(point);
+  // For performance, consider flushing in batches or on an interval
+  writeApi.flush(); 
+};
+
+// The old function remains for now to ensure no other parts of the app break.
 export const writeSensorData = (data: {
   internalPressure: number;
   externalPressure: number;

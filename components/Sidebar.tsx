@@ -1,6 +1,6 @@
 
 import React from 'react';
-import type { View } from '../types';
+import type { View } from '../backend/src/types';
 import { useAppContext } from '../context/AppContext';
 import { useAuth } from '../context/AuthContext';
 import { NAV_ITEMS } from '../constants';
@@ -16,10 +16,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
   const { logout, user } = useAuth();
 
   const filteredNavItems = NAV_ITEMS.filter(item => {
-    if (user?.role === 'Operator' && item.id === 'users') {
-      return false;
-    }
-    if (user?.role === 'Viewer' && (item.id === 'users' || item.id === 'ventilation' || item.id === 'lighting')) {
+    if (item.allowedRoles && user && !item.allowedRoles.includes(user.role)) {
       return false;
     }
     return true;

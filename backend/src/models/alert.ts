@@ -1,6 +1,6 @@
 export interface Alert {
   id: string;
-  siteId: string;
+  site_id: string;
   parameter: string;
   message: string;
   severity: 'Ok' | 'Warn' | 'Danger';

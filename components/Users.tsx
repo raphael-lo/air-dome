@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import type { User } from '../types';
+import type { User } from '../backend/src/types';
 import { useAppContext } from '../context/AppContext';
 import { fetchUsers, createUser, updateUser, updateUserStatus } from '../services/geminiService';
 import { useAuth } from '../context/AuthContext';
@@ -346,7 +346,7 @@ export const Users: React.FC = () => {
               <tr key={user.id} className="border-b border-gray-200 dark:border-brand-dark-lightest hover:bg-gray-50 dark:hover:bg-brand-dark transition-colors">
                 <td className="p-3 font-medium text-gray-800 dark:text-brand-text">{user.username}</td>
                 <td className="p-3 text-gray-800 dark:text-brand-text">{t(user.role.toLowerCase())}</td>
-                <td className="p-3 text-gray-500 dark:text-brand-text-dim">{new Date(user.createdAt).toLocaleDateString()}</td>
+                <td className="p-3 text-gray-500 dark:text-brand-text-dim">{new Date(user.created_at).toLocaleDateString()}</td>
                 <td className="p-3">
                     <span className={`px-2 py-1 text-xs font-bold rounded-full ${user.status === 'active' ? 'bg-status-ok text-white' : 'bg-gray-500 text-white'}`}>
                         {t(user.status)}

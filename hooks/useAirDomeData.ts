@@ -1,52 +1,77 @@
 import { useState, useEffect, useRef } from 'react';
-import type { AirDomeData, Site } from '../types';
+import type { AirDomeData, Site, AlertThreshold, Metric } from '../backend/src/types';
 import { useAuth } from '../context/AuthContext';
-import { StatusLevel } from '../types';
+import { StatusLevel } from '../backend/src/types';
 import { config } from '../config';
 
 const BASE_URL = config.apiBaseUrl;
 const WS_URL = config.wsUrl;
 
-export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>) => {
+// This helper function is now only used for the initial data load.
+const getStatusForMetric = (value: number, threshold: AlertThreshold | undefined): StatusLevel => {
+  if (!threshold) return StatusLevel.Ok;
+
+  const { min_warning, max_warning, min_alert, max_alert } = threshold;
+
+  if (min_alert !== null && value <= min_alert) return StatusLevel.Danger;
+  if (max_alert !== null && value >= max_alert) return StatusLevel.Danger;
+  if (min_warning !== null && value <= min_warning) return StatusLevel.Warn;
+  if (max_warning !== null && value >= max_warning) return StatusLevel.Warn;
+
+  return StatusLevel.Ok;
+};
+
+export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>, onNewAlert: (payload: any) => void) => {
   const [data, setData] = useState<AirDomeData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null); // New state
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const setDataRef = useRef(setData);
-  const wsRef = useRef<WebSocket | null>(null); // New ref for WebSocket
+  const wsRef = useRef<WebSocket | null>(null);
+  const onNewAlertRef = useRef((payload: any) => {});
 
   useEffect(() => {
     setDataRef.current = setData;
   }, [setData]);
 
   useEffect(() => {
-    const selectedPeriod = '-24h';
-    const fetchHistoricalData = async () => {
+    onNewAlertRef.current = onNewAlert;
+  }, [onNewAlert]);
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
       setIsLoading(true);
-      const metricsToFetch = [
-        { key: 'internalPressure', measurement: 'sensor_data', field: 'internalPressure' },
-        { key: 'externalPressure', measurement: 'sensor_data', field: 'externalPressure' },
-        { key: 'fanSpeed', measurement: 'sensor_data', field: 'fanSpeed' },
-        { key: 'airExchangeRate', measurement: 'sensor_data', field: 'airExchangeRate' },
-        { key: 'externalWindSpeed', measurement: 'sensor_data', field: 'externalWindSpeed' },
-        { key: 'internalPM25', measurement: 'sensor_data', field: 'internalPM25' },
-        { key: 'externalPM25', measurement: 'sensor_data', field: 'externalPM25' },
-        { key: 'internalCO2', measurement: 'sensor_data', field: 'internalCO2' },
-        { key: 'externalCO2', measurement: 'sensor_data', field: 'externalCO2' },
-        { key: 'internalO2', measurement: 'sensor_data', field: 'internalO2' },
-        { key: 'externalO2', measurement: 'sensor_data', field: 'externalO2' },
-        { key: 'internalCO', measurement: 'sensor_data', field: 'internalCO' },
-        { key: 'externalCO', measurement: 'sensor_data', field: 'externalCO' },
-        { key: 'internalTemperature', measurement: 'sensor_data', field: 'internalTemperature' },
-        { key: 'externalTemperature', measurement: 'sensor_data', field: 'externalTemperature' },
-        { key: 'internalHumidity', measurement: 'sensor_data', field: 'internalHumidity' },
-        { key: 'externalHumidity', measurement: 'sensor_data', field: 'externalHumidity' },
-        { key: 'internalNoise', measurement: 'sensor_data', field: 'internalNoise' },
-        { key: 'externalNoise', measurement: 'sensor_data', field: 'externalNoise' },
-        { key: 'basePressure', measurement: 'sensor_data', field: 'basePressure' },
-        { key: 'internalLux', measurement: 'sensor_data', field: 'internalLux' },
-      ];
+
+      const [metricsResponse, thresholdsResponse] = await Promise.all([
+        authenticatedFetch(`${BASE_URL}/metrics`),
+        authenticatedFetch(`${BASE_URL}/alert-thresholds/${site.id}`)
+      ]);
+
+      if (!metricsResponse.ok || !thresholdsResponse.ok) {
+        console.error('Failed to fetch initial data');
+        setIsLoading(false);
+        return;
+      }
+
+      const metrics: Metric[] = await metricsResponse.json();
+      const fetchedThresholds: AlertThreshold[] = await thresholdsResponse.json();
+      
+      const thresholdsMap: Record<string, AlertThreshold> = {};
+      const metricIdToMqttParam: Record<number, string> = {};
+      metrics.forEach(m => {
+        if(m.id) metricIdToMqttParam[m.id] = m.mqtt_param;
+      });
+      fetchedThresholds.forEach(t => {
+        const mqttParam = metricIdToMqttParam[t.metric_id];
+        if (mqttParam) {
+          thresholdsMap[mqttParam] = t;
+        }
+      });
+
+      const selectedPeriod = '-24h';
+      const metricsToFetch = metrics.map(m => ({ key: m.mqtt_param, measurement: 'sensor_data', field: m.mqtt_param }));
 
       const initialData: AirDomeData = {
+        timestamp: "",
         internalPressure: { value: 0, status: StatusLevel.Ok, history: [] },
         externalPressure: { value: 0, status: StatusLevel.Ok, history: [] },
         fanSpeed: { value: 0, status: StatusLevel.Ok, history: [] },
@@ -77,12 +102,9 @@ export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestIn
       };
 
       const historyPromises = metricsToFetch.map(async (metric) => {
-        console.log(`Fetching historical data for: ${metric.measurement}.${metric.field}`);
         try {
           const response = await authenticatedFetch(`${BASE_URL}/sensor-data/history?measurement=${metric.measurement}&field=${metric.field}&range=${selectedPeriod}`);
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+          if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           const historyData = await response.json();
           return { key: metric.key, history: historyData };
         } catch (error) {
@@ -93,7 +115,6 @@ export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestIn
 
       const histories = await Promise.all(historyPromises);
 
-      // Create a new AirDomeData object based on initialData
       const newAirDomeData: AirDomeData = { ...initialData };
 
       histories.forEach(({ key, history }) => {
@@ -102,74 +123,82 @@ export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestIn
           if (history.length > 0) {
             const lastPoint = history[history.length - 1];
             if (lastPoint) {
-                newAirDomeData[key].value = lastPoint._value;
+                const value = lastPoint._value;
+                newAirDomeData[key].value = value;
+                newAirDomeData[key].status = getStatusForMetric(value, thresholdsMap[key]);
             }
           }
         }
       });
-      setData(newAirDomeData); // Directly set the data
+      setData(newAirDomeData);
       setIsLoading(false);
     };
 
-    fetchHistoricalData();
+    fetchInitialData();
 
-    // WebSocket connection logic
     if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
-      console.log('Starting WebSocket connection...');
       const ws = new WebSocket(WS_URL);
-
-      ws.onopen = () => {
-        console.log('Connected to WebSocket');
-      };
+      ws.onopen = () => console.log('Connected to WebSocket');
 
       ws.onmessage = (event) => {
-        console.log('Received message:', event.data);
         const newData = JSON.parse(event.data);
-        setDataRef.current((prevData) => {
+        console.log('[WebSocket Receive]', newData);
+        
+        // Handle new alert broadcasts
+        if (newData.type === 'new_alert') {
+            console.log('[WS] New alert received:', newData.payload);
+            onNewAlertRef.current(newData.payload);
+            console.log('[WS] onNewAlert callback executed.');
+        } else {
+            setDataRef.current((prevData) => {
           if (!prevData) return prevData;
 
+          console.log('[WS] prevData:', prevData); // Added log
           const updatedData = { ...prevData };
           const maxPoints = 40;
 
           for (const key in newData) {
-            if (key !== 'timestamp' && updatedData[key] && updatedData[key].history) {
-              updatedData[key].value = newData[key];
-              const newHistory = [...updatedData[key].history, newData[key]];
-              if (newHistory.length > maxPoints) {
-                newHistory.shift();
+            console.log(`[WS] Checking key: ${key}, updatedData[key]:`, updatedData[key]); // Added log
+            if (key !== 'timestamp' && updatedData[key]) {
+              console.log(`[WS] Updating key: ${key}`, newData[key]); // Added log
+              const { value, status } = newData[key];
+              
+              updatedData[key].value = value;
+              updatedData[key].status = status;
+
+              if (updatedData[key].history) {
+                  const newHistory = [...updatedData[key].history, { _time: new Date().toISOString(), _value: value }];
+                  if (newHistory.length > maxPoints) {
+                    newHistory.shift();
+                  }
+                  updatedData[key].history = newHistory;
               }
-              updatedData[key].history = newHistory;
-            } else if (key !== 'timestamp' && updatedData[key]) {
-              updatedData[key].value = newData[key];
             }
           }
           if (newData.timestamp) {
             setLastUpdated(newData.timestamp);
-            updatedData.timestamp = newData.timestamp; // Add this line
+            updatedData.timestamp = newData.timestamp;
           }
+          console.log('[WS] updatedData:', updatedData); // Added log
           return updatedData;
         });
       };
 
-      ws.onerror = (event) => {
-        console.error('WebSocket error:', event);
-      };
-
+      ws.onerror = (event) => console.error('WebSocket error:', event);
       ws.onclose = (event) => {
         console.log(`WebSocket disconnected: ${event.code} ${event.reason}`);
-        wsRef.current = null; // Clear ref on close
+        wsRef.current = null;
       };
-
-      wsRef.current = ws; // Store WebSocket instance in ref
-    }
+      wsRef.current = ws;
+      }
 
     return () => {
-      console.log('Closing WebSocket connection...');
       if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
         wsRef.current.close();
-        wsRef.current = null; // Clear ref on cleanup
+        wsRef.current = null;
       }
-    };
+      };
+    }
   }, [site, authenticatedFetch]);
 
   return { data, isLoading, lastUpdated };

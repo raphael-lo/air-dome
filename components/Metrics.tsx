@@ -1,185 +1,136 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { fetchMetrics, createMetric, updateMetric, deleteMetric, fetchMetricGroups, createMetricGroup, updateMetricGroup, deleteMetricGroup, fetchSections, createSection, updateSection, deleteSection, updateSectionItems } from '../services/geminiService';
-import type { Metric, MetricGroup, Section } from '../types';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { 
+    fetchMetrics, createMetric, updateMetric, deleteMetric, 
+    fetchMetricGroups, createMetricGroup, updateMetricGroup, deleteMetricGroup, 
+    fetchSections, createSection, updateSection, deleteSection, 
+    updateSectionItems, fetchSectionItems, addSectionItem, removeSectionItem,
+    updateSectionOrder
+} from '../services/geminiService';
+import type { Metric, MetricGroup, Section, SectionItem } from '../backend/src/types';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { DragHandleIcon } from './icons/NavIcons';
+import * as MetricIcons from './icons/MetricIcons';
+import { IconPicker } from './IconPicker';
+import { AddItemModal } from './AddItemModal';
+import { useAppContext } from '../context/AppContext';
+import { SpinnerIcon } from './icons/MetricIcons';
+import { SectionFormModal } from './SectionFormModal';
+import { MetricFormModal } from './MetricFormModal';
+import { MetricGroupFormModal } from './MetricGroupFormModal';
 
-const SortableItem: React.FC<{ id: any, children: React.ReactNode }> = ({ id, children }) => {
-    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
+// --- Types ---
+interface SectionWithItems extends Section {
+  items: SectionItem[];
+}
 
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
-    };
+// --- Reusable Components ---
+const SortableItem: React.FC<{ id: any, children: React.ReactNode, handle?: boolean, data?: object }> = ({ id, children, handle = true, data }) => {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id, data });
+    const style = { transform: CSS.Transform.toString(transform), transition };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes}> 
-            <div className="flex items-center">
-                <div {...listeners} className="cursor-move p-2"> 
-                    <DragHandleIcon className="h-6 w-6 text-gray-500" />
-                </div>
-                <div className="w-full">{children}</div> 
-            </div> 
+        <div ref={setNodeRef} style={style} {...attributes} className="flex items-center bg-white dark:bg-brand-dark-light rounded-lg shadow mb-2">
+            {handle && <div {...listeners} className="cursor-grab p-3 text-gray-400"><DragHandleIcon className="h-5 w-5" /></div>}
+            <div className="w-full p-3">{children}</div>
         </div>
     );
 };
 
+// --- Main Views ---
+
 const MetricsView: React.FC = () => {
     const { authenticatedFetch } = useAuth();
     const [metrics, setMetrics] = useState<Metric[]>([]);
-    const [metricGroups, setMetricGroups] = useState<MetricGroup[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingMetric, setEditingMetric] = useState<Metric | null>(null);
+    const [editingMetric, setEditingMetric] = useState<Partial<Metric> | null>(null);
 
-    const [mqttParam, setMqttParam] = useState('');
-    const [displayName, setDisplayName] = useState('');
-    const [deviceId, setDeviceId] = useState('');
-    const [groupId, setGroupId] = useState<number | undefined>(undefined);
-
-    useEffect(() => {
-        loadData();
-    }, []);
-
-    const loadData = async () => {
+    const loadMetrics = async () => {
         setIsLoading(true);
-        try {
-            const [metricsData, metricGroupsData] = await Promise.all([
-                fetchMetrics({ authenticatedFetch }),
-                fetchMetricGroups({ authenticatedFetch }),
-            ]);
-            setMetrics(metricsData);
-            setMetricGroups(metricGroupsData);
-        } catch (error) {
-            setError('Failed to load data');
-        } finally {
-            setIsLoading(false);
-        }
+        const data = await fetchMetrics({ authenticatedFetch });
+        setMetrics(data);
+        setIsLoading(false);
     };
 
-    const handleOpenModal = (metric: Metric | null) => {
-        setEditingMetric(metric);
-        if (metric) {
-            setMqttParam(metric.mqtt_param);
-            setDisplayName(metric.display_name);
-            setDeviceId(metric.device_id);
-            setGroupId(metric.group_id);
-        } else {
-            setMqttParam('');
-            setDisplayName('');
-            setDeviceId('');
-            setGroupId(undefined);
-        }
+    useEffect(() => { loadMetrics(); }, []);
+
+    const handleOpenModal = (metric: Partial<Metric> | null) => {
+        setEditingMetric(metric || {});
         setIsModalOpen(true);
     };
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setEditingMetric(null);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const metricData = { mqtt_param: mqttParam, display_name: displayName, device_id: deviceId, group_id: groupId! };
-        try {
-            if (editingMetric) {
-                await updateMetric(editingMetric.id, metricData, { authenticatedFetch });
-            } else {
-                await createMetric(metricData, { authenticatedFetch });
-            }
-            loadData();
-            handleCloseModal();
-        } catch (error) {
-            setError('Failed to save metric');
+    const handleSave = async (metricData: Partial<Metric>) => {
+        if (metricData.id) {
+            await updateMetric(metricData.id, metricData, { authenticatedFetch });
+        } else {
+            await createMetric(metricData as Omit<Metric, 'id'>, { authenticatedFetch });
         }
+        loadMetrics();
+        setIsModalOpen(false);
     };
 
     const handleDelete = async (metricId: number) => {
-        try {
+        if (window.confirm('Are you sure you want to delete this metric?')) {
             await deleteMetric(metricId, { authenticatedFetch });
-            loadData();
-        } catch (error) {
-            setError('Failed to delete metric');
+            loadMetrics();
         }
     };
 
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-brand-text">Metrics</h2>
-                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent hover:bg-brand-accent-light text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                    Add Metric
-                </button>
+                <h2 className="text-xl font-bold">Metrics</h2>
+                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent text-white py-2 px-4 rounded-lg">Add Metric</button>
             </div>
-
-            {isLoading && <p>Loading...</p>}
-            {error && <p className="text-red-500">{error}</p>}
-
-            <table className="w-full text-left">
-                <thead>
-                    <tr className="border-b border-gray-200 dark:border-brand-dark-lightest">
-                        <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">MQTT Param</th>
-                        <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Display Name</th>
-                        <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Device ID</th>
-                        <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Group</th>
-                        <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim text-center">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {metrics.map(metric => (
-                        <tr key={metric.id} className="border-b border-gray-200 dark:border-brand-dark-lightest hover:bg-gray-50 dark:hover:bg-brand-dark transition-colors">
-                            <td className="p-3 font-medium text-gray-800 dark:text-brand-text">{metric.mqtt_param}</td>
-                            <td className="p-3 text-gray-800 dark:text-brand-text">{metric.display_name}</td>
-                            <td className="p-3 text-gray-800 dark:text-brand-text">{metric.device_id}</td>
-                            <td className="p-3 text-gray-800 dark:text-brand-text">{metricGroups.find(g => g.id === metric.group_id)?.name}</td>
-                            <td className="p-3 text-center">
-                                <button onClick={() => handleOpenModal(metric)} className="text-blue-500 hover:underline">Edit</button>
-                                <button onClick={() => handleDelete(metric.id)} className="text-red-500 hover:underline ml-4">Delete</button>
-                            </td>
+            {isLoading ? <div className="flex justify-center items-center"><SpinnerIcon className="h-8 w-8 animate-spin" /></div> : 
+            <div className="overflow-x-auto bg-white dark:bg-brand-dark-light rounded-lg shadow">
+                <table className="w-full text-left">
+                    <thead>
+                        <tr className="border-b border-gray-200 dark:border-brand-dark-lightest">
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Icon</th>
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">MQTT Param</th>
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Display Name</th>
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Display Name (TC)</th>
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Device ID</th>
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Device Param</th>
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Unit</th>
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim text-center">Actions</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
-
+                    </thead>
+                    <tbody>
+                        {metrics.map(metric => {
+                            const IconComponent = metric.icon ? MetricIcons[metric.icon as keyof typeof MetricIcons] : null;
+                            return (
+                                <tr key={metric.id} className="border-b border-gray-200 dark:border-brand-dark-lightest hover:bg-gray-50 dark:hover:bg-brand-dark transition-colors">
+                                    <td className="p-3">{IconComponent && <IconComponent className="h-6 w-6" />}</td>
+                                    <td className="p-3 font-medium text-gray-800 dark:text-brand-text">{metric.mqtt_param}</td>
+                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric.display_name}</td>
+                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric.display_name_tc}</td>
+                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric.device_id}</td>
+                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric.device_param}</td>
+                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric.unit}</td>
+                                    <td className="p-3 text-center">
+                                        <button onClick={() => handleOpenModal(metric)} className="text-blue-500 hover:underline">Edit</button>
+                                        <button onClick={() => handleDelete(metric.id!)} className="text-red-500 hover:underline ml-4">Delete</button>
+                                    </td>
+                                </tr>
+                            )
+                        })}
+                    </tbody>
+                </table>
+            </div>
+            }
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white dark:bg-brand-dark-light rounded-lg shadow-2xl p-6 w-full max-w-md">
-                        <h2 className="text-2xl font-bold text-brand-accent mb-4">{editingMetric ? 'Edit Metric' : 'Add Metric'}</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label htmlFor="mqtt_param" className="block text-sm font-medium text-gray-600 dark:text-brand-text-dim">MQTT Param</label>
-                                <input id="mqtt_param" type="text" value={mqttParam} onChange={e => setMqttParam(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-brand-dark border border-gray-300 dark:border-brand-dark-lightest rounded-md" required />
-                            </div>
-                            <div>
-                                <label htmlFor="display_name" className="block text-sm font-medium text-gray-600 dark:text-brand-text-dim">Display Name</label>
-                                <input id="display_name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-brand-dark border border-gray-300 dark:border-brand-dark-lightest rounded-md" required />
-                            </div>
-                            <div>
-                                <label htmlFor="device_id" className="block text-sm font-medium text-gray-600 dark:text-brand-text-dim">Device ID</label>
-                                <input id="device_id" type="text" value={deviceId} onChange={e => setDeviceId(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-brand-dark border border-gray-300 dark:border-brand-dark-lightest rounded-md" required />
-                            </div>
-                            <div>
-                                <label htmlFor="group_id" className="block text-sm font-medium text-gray-600 dark:text-brand-text-dim">Group</label>
-                                <select id="group_id" value={groupId} onChange={e => setGroupId(Number(e.target.value))} className="mt-1 block w-full pl-3 pr-10 py-2 text-base bg-white dark:bg-brand-dark border-gray-300 dark:border-brand-dark-lightest rounded-md" required>
-                                    <option value="">Select a group</option>
-                                    {metricGroups.map(group => (
-                                        <option key={group.id} value={group.id}>{group.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex justify-end gap-4 pt-4">
-                                <button type="button" onClick={handleCloseModal} className="py-2 px-4 bg-gray-200 dark:bg-brand-dark-lightest text-gray-800 dark:text-brand-text font-semibold rounded-lg">Cancel</button>
-                                <button type="submit" className="py-2 px-4 bg-brand-accent text-white font-semibold rounded-lg">{editingMetric ? 'Update' : 'Create'}</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <MetricFormModal 
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={handleSave}
+                    metric={editingMetric}
+                />
             )}
         </div>
     );
@@ -188,118 +139,87 @@ const MetricsView: React.FC = () => {
 const MetricGroupsView: React.FC = () => {
     const { authenticatedFetch } = useAuth();
     const [metricGroups, setMetricGroups] = useState<MetricGroup[]>([]);
+    const [metrics, setMetrics] = useState<Metric[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingGroup, setEditingGroup] = useState<MetricGroup | null>(null);
-
-    const [name, setName] = useState('');
-
-    useEffect(() => {
-        loadData();
-    }, []);
+    const [editingGroup, setEditingGroup] = useState<Partial<MetricGroup> | null>(null);
 
     const loadData = async () => {
         setIsLoading(true);
-        try {
-            const metricGroupsData = await fetchMetricGroups({ authenticatedFetch });
-            setMetricGroups(metricGroupsData);
-        } catch (error) {
-            setError('Failed to load metric groups');
-        } finally {
-            setIsLoading(false);
-        }
+        const [groups, metricsData] = await Promise.all([
+            fetchMetricGroups({ authenticatedFetch }),
+            fetchMetrics({ authenticatedFetch })
+        ]);
+        setMetricGroups(groups);
+        setMetrics(metricsData);
+        setIsLoading(false);
     };
 
-    const handleOpenModal = (group: MetricGroup | null) => {
-        setEditingGroup(group);
-        if (group) {
-            setName(group.name);
-        } else {
-            setName('');
-        }
+    useEffect(() => { loadData(); }, []);
+
+    const handleOpenModal = (group: Partial<MetricGroup> | null) => {
+        setEditingGroup(group || {});
         setIsModalOpen(true);
     };
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setEditingGroup(null);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const groupData = { name };
-        try {
-            if (editingGroup) {
-                await updateMetricGroup(editingGroup.id, groupData, { authenticatedFetch });
-            } else {
-                await createMetricGroup(groupData, { authenticatedFetch });
-            }
-            loadData();
-            handleCloseModal();
-        } catch (error) {
-            setError('Failed to save metric group');
+    const handleSave = async (groupData: Partial<MetricGroup>) => {
+        if (groupData.id) {
+            await updateMetricGroup(groupData.id, groupData, { authenticatedFetch });
+        } else {
+            await createMetricGroup(groupData as Omit<MetricGroup, 'id'>, { authenticatedFetch });
         }
+        loadData();
+        setIsModalOpen(false);
     };
 
     const handleDelete = async (groupId: number) => {
-        try {
+        if (window.confirm('Are you sure you want to delete this group?')) {
             await deleteMetricGroup(groupId, { authenticatedFetch });
             loadData();
-        } catch (error) {
-            setError('Failed to delete metric group');
         }
     };
 
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-brand-text">Metric Groups</h2>
-                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent hover:bg-brand-accent-light text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                    Add Group
-                </button>
+                <h2 className="text-xl font-bold">Metric Groups</h2>
+                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent text-white py-2 px-4 rounded-lg">Add Group</button>
             </div>
-
-            {isLoading && <p>Loading...</p>}
-            {error && <p className="text-red-500">{error}</p>}
-
-            <table className="w-full text-left">
-                <thead>
-                    <tr className="border-b border-gray-200 dark:border-brand-dark-lightest">
-                        <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Name</th>
-                        <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim text-center">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {metricGroups.map(group => (
-                        <tr key={group.id} className="border-b border-gray-200 dark:border-brand-dark-lightest hover:bg-gray-50 dark:hover:bg-brand-dark transition-colors">
-                            <td className="p-3 font-medium text-gray-800 dark:text-brand-text">{group.name}</td>
-                            <td className="p-3 text-center">
-                                <button onClick={() => handleOpenModal(group)} className="text-blue-500 hover:underline">Edit</button>
-                                <button onClick={() => handleDelete(group.id)} className="text-red-500 hover:underline ml-4">Delete</button>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-
+            {isLoading ? <div className="flex justify-center items-center"><SpinnerIcon className="h-8 w-8 animate-spin" /></div> : 
+            <div className="overflow-x-auto bg-white dark:bg-brand-dark-light rounded-lg shadow">
+                <table className="w-full text-left">
+                    {/* Table Head */}
+                    <tbody>
+                        {metricGroups.map(group => {
+                            const IconComponent = group.icon ? MetricIcons[group.icon as keyof typeof MetricIcons] : null;
+                            const metric1 = metrics.find(m => m.id === group.metric1_id);
+                            const metric2 = metrics.find(m => m.id === group.metric2_id);
+                            return (
+                                <tr key={group.id} className="border-b border-gray-200 dark:border-brand-dark-lightest hover:bg-gray-50 dark:hover:bg-brand-dark transition-colors">
+                                    <td className="p-3">{IconComponent && <IconComponent className="h-6 w-6" />}</td>
+                                    <td className="p-3 font-medium text-gray-800 dark:text-brand-text">{group.name}</td>
+                                    <td className="p-3 text-gray-800 dark:text-brand-text">{group.name_tc}</td>
+                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric1?.display_name}</td>
+                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric2?.display_name}</td>
+                                    <td className="p-3 text-center">
+                                        <button onClick={() => handleOpenModal(group)} className="text-blue-500 hover:underline">Edit</button>
+                                        <button onClick={() => handleDelete(group.id!)} className="text-red-500 hover:underline ml-4">Delete</button>
+                                    </td>
+                                </tr>
+                            )
+                        })}
+                    </tbody>
+                </table>
+            </div>
+            }
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white dark:bg-brand-dark-light rounded-lg shadow-2xl p-6 w-full max-w-md">
-                        <h2 className="text-2xl font-bold text-brand-accent mb-4">{editingGroup ? 'Edit Group' : 'Add Group'}</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-gray-600 dark:text-brand-text-dim">Name</label>
-                                <input id="name" type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-brand-dark border border-gray-300 dark:border-brand-dark-lightest rounded-md" required />
-                            </div>
-                            <div className="flex justify-end gap-4 pt-4">
-                                <button type="button" onClick={handleCloseModal} className="py-2 px-4 bg-gray-200 dark:bg-brand-dark-lightest text-gray-800 dark:text-brand-text font-semibold rounded-lg">Cancel</button>
-                                <button type="submit" className="py-2 px-4 bg-brand-accent text-white font-semibold rounded-lg">{editingGroup ? 'Update' : 'Create'}</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <MetricGroupFormModal 
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={handleSave}
+                    group={editingGroup}
+                    metrics={metrics}
+                />
             )}
         </div>
     );
@@ -307,158 +227,189 @@ const MetricGroupsView: React.FC = () => {
 
 const SectionsView: React.FC = () => {
     const { authenticatedFetch } = useAuth();
-    const [sections, setSections] = useState<Section[]>([]);
+    const { t } = useAppContext();
+    const [sections, setSections] = useState<SectionWithItems[]>([]);
+    const [allMetrics, setAllMetrics] = useState<Metric[]>([]);
+    const [allMetricGroups, setAllMetricGroups] = useState<MetricGroup[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingSection, setEditingSection] = useState<Section | null>(null);
+    const [editingSection, setEditingSection] = useState<Partial<Section> | null>(null);
+    const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
+    const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
 
-    const [name, setName] = useState('');
-
-    const sensors = useSensors(
-        useSensor(PointerSensor),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
-    );
-
-    useEffect(() => {
-        loadData();
-    }, []);
+    const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
     const loadData = async () => {
         setIsLoading(true);
-        try {
-            const sectionsData = await fetchSections({ authenticatedFetch });
-            setSections(sectionsData.map(section => ({ ...section, items: [] })));
-        } catch (error) {
-            setError('Failed to load sections');
-        } finally {
-            setIsLoading(false);
-        }
+        const [sectionsData, metricsData, groupsData] = await Promise.all([
+            fetchSections({ authenticatedFetch }),
+            fetchMetrics({ authenticatedFetch }),
+            fetchMetricGroups({ authenticatedFetch })
+        ]);
+        setAllMetrics(metricsData);
+        setAllMetricGroups(groupsData);
+        const sectionsWithItems = await Promise.all(
+            sectionsData.map(async (section) => {
+                const items = await fetchSectionItems(section.id!, { authenticatedFetch });
+                return { ...section, items: items || [] };
+            })
+        );
+        setSections(sectionsWithItems);
+        setIsLoading(false);
     };
 
-    const handleOpenModal = (section: Section | null) => {
-        setEditingSection(section);
-        if (section) {
-            setName(section.name);
-        } else {
-            setName('');
-        }
+    useEffect(() => { loadData(); }, []);
+
+    const handleOpenModal = (section: Partial<Section> | null) => {
+        setEditingSection(section || {});
         setIsModalOpen(true);
     };
 
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setEditingSection(null);
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const sectionData = { name };
-        try {
-            if (editingSection) {
-                await updateSection(editingSection.id, sectionData, { authenticatedFetch });
-            } else {
-                await createSection(sectionData, { authenticatedFetch });
-            }
-            loadData();
-            handleCloseModal();
-        } catch (error) {
-            setError('Failed to save section');
+    const handleSaveSection = async (sectionData: Partial<Section>) => {
+        if (sectionData.id) {
+            await updateSection(sectionData.id, sectionData, { authenticatedFetch });
+        } else {
+            await createSection(sectionData as Omit<Section, 'id'>, { authenticatedFetch });
         }
+        loadData();
+        setIsModalOpen(false);
     };
 
-    const handleDelete = async (sectionId: number) => {
-        try {
+    const handleDeleteSection = async (sectionId: number) => {
+        if (window.confirm('Are you sure you want to delete this section?')) {
             await deleteSection(sectionId, { authenticatedFetch });
             loadData();
-        } catch (error) {
-            setError('Failed to delete section');
         }
     };
 
-    const handleDragEnd = (event: any) => {
-        const { active, over } = event;
+    const handleAddItem = async (sectionId: number, itemType: 'metric' | 'group', itemId: number) => {
+        const section = sections.find(s => s.id === sectionId);
+        const newOrder = section ? section.items.length : 0;
+        await addSectionItem(sectionId, { item_id: itemId, item_type: itemType, item_order: newOrder }, { authenticatedFetch });
+        loadData();
+        setIsAddItemModalOpen(false);
+    };
 
-        if (active.id !== over.id) {
-            setSections((items) => {
-                const oldIndex = items.findIndex(item => item.id === active.id);
-                const newIndex = items.findIndex(item => item.id === over.id);
-                const newItems = arrayMove(items, oldIndex, newIndex);
-                updateSectionItems(over.id, newItems.map((item, index) => ({ ...item, item_order: index })), { authenticatedFetch });
-                return newItems;
+    const handleRemoveItem = async (sectionId: number, itemId: number) => {
+        await removeSectionItem(sectionId, itemId, { authenticatedFetch });
+        loadData();
+    };
+
+    const handleDragEnd = (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+
+        const activeType = active.data.current?.type;
+        const overType = over.data.current?.type;
+
+        if (activeType === 'Section' && overType === 'Section') {
+            setSections(prev => {
+                const oldIndex = prev.findIndex(s => s.id === active.id);
+                const newIndex = prev.findIndex(s => s.id === over.id);
+                const reordered = arrayMove(prev, oldIndex, newIndex);
+                updateSectionOrder(reordered.map((s, i) => ({ id: s.id!, item_order: i })), { authenticatedFetch });
+                return reordered;
             });
+        } else if (activeType === 'SectionItem' && over.data.current?.type === 'SectionItem') {
+            const activeSectionId = active.data.current?.sectionId;
+            const overSectionId = over.data.current?.sectionId;
+
+            if (activeSectionId === overSectionId) {
+                setSections(prev => {
+                    const sectionIndex = prev.findIndex(s => s.id === activeSectionId);
+                    if (sectionIndex === -1) return prev;
+
+                    const oldItemIndex = prev[sectionIndex].items.findIndex(i => i.id === active.id);
+                    const newItemIndex = prev[sectionIndex].items.findIndex(i => i.id === over.id);
+                    if (oldItemIndex === -1 || newItemIndex === -1) return prev;
+
+                    const reorderedItems = arrayMove(prev[sectionIndex].items, oldItemIndex, newItemIndex);
+                    const newSections = JSON.parse(JSON.stringify(prev));
+                    newSections[sectionIndex].items = reorderedItems;
+
+                    const updatedItems = newSections[sectionIndex].items.map((item, index) => ({ ...item, item_order: index }));
+                    updateSectionItems(activeSectionId, updatedItems, { authenticatedFetch });
+
+                    return newSections;
+                });
+            }
         }
+    };
+
+    const getItemName = (item: SectionItem) => {
+        const collection = item.item_type === 'metric' ? allMetrics : allMetricGroups;
+        const found = collection.find(m => m.id === item.item_id);
+        return found ? (found.name || (found as Metric).display_name) : 'Unknown';
     };
 
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-brand-text">Sections</h2>
-                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent hover:bg-brand-accent-light text-white font-bold py-2 px-4 rounded-lg transition-colors">
-                    Add Section
-                </button>
+                <h2 className="text-xl font-bold">Sections</h2>
+                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent text-white py-2 px-4 rounded-lg">Add Section</button>
             </div>
-
-            {isLoading && <p>Loading...</p>}
-            {error && <p className="text-red-500">{error}</p>}
-
+            {isLoading ? <div className="flex justify-center items-center"><SpinnerIcon className="h-8 w-8 animate-spin" /></div> : 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={sections.map(s => s.id)} strategy={verticalListSortingStrategy}>
+                <SortableContext items={sections.map(s => s.id!)} strategy={verticalListSortingStrategy}>
                     {sections.map(section => (
-                        <SortableItem key={section.id} id={section.id}>
-                            <div className="p-4 border border-gray-200 dark:border-brand-dark-lightest rounded-lg mb-4 w-full">
+                        <SortableItem key={section.id} id={section.id!} handle={true} data={{ type: 'Section', id: section.id }}>
+                            <div className="w-full">
                                 <div className="flex justify-between items-center">
-                                    <div className="flex items-center">
-                                        <h3 className="text-lg font-bold text-gray-900 dark:text-brand-text">{section.name}</h3>
-                                    </div>
-                                    <div className="flex items-center">
-                                        <button onClick={() => handleOpenModal(section)} className="text-blue-500 hover:underline">Edit</button>
-                                        <button onClick={() => handleDelete(section.id)} className="text-red-500 hover:underline ml-4">Delete</button>
+                                    <h3 className="text-lg font-bold">{section.name}</h3>
+                                    <div>
+                                        <button onClick={() => {setSelectedSectionId(section.id!); setIsAddItemModalOpen(true);}} className="text-sm bg-blue-500 text-white py-1 px-2 rounded-md mr-2">Add Item</button>
+                                        <button onClick={() => handleOpenModal(section)} className="text-sm text-blue-500">Edit</button>
+                                        <button onClick={() => handleDeleteSection(section.id!)} className="text-sm text-red-500 ml-2">Delete</button>
                                     </div>
                                 </div>
-                                <div className="p-4 mt-4 border-t border-gray-200 dark:border-brand-dark-lightest">
-                                    {section.items.length > 0 ? (
-                                        <p>Items here</p>
-                                    ) : (
-                                        <p className="text-gray-500 dark:text-brand-text-dim">This section is empty.</p>
-                                    )}
+                                <div className="mt-2 pl-4 border-l-2 border-gray-200">
+                                    <SortableContext items={section.items.map(i => i.id!)} id={`section-${section.id}`}>
+                                        {section.items.map(item => (
+                                            <SortableItem key={item.id} id={item.id!} handle={true} data={{ type: 'SectionItem', sectionId: section.id! }}>
+                                                <div className="flex justify-between items-center w-full">
+                                                    <span>{getItemName(item)}</span>
+                                                    <button onClick={() => handleRemoveItem(section.id!, item.id!)} className="text-xs text-red-500">Remove</button>
+                                                </div>
+                                            </SortableItem>
+                                        ))}
+                                    </SortableContext>
                                 </div>
                             </div>
                         </SortableItem>
                     ))}
                 </SortableContext>
             </DndContext>
-
+            }
             {isModalOpen && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white dark:bg-brand-dark-light rounded-lg shadow-2xl p-6 w-full max-w-md">
-                        <h2 className="text-2xl font-bold text-brand-accent mb-4">{editingSection ? 'Edit Section' : 'Add Section'}</h2>
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-gray-600 dark:text-brand-text-dim">Name</label>
-                                <input id="name" type="text" value={name} onChange={e => setName(e.target.value)} className="mt-1 block w-full px-3 py-2 bg-white dark:bg-brand-dark border border-gray-300 dark:border-brand-dark-lightest rounded-md" required />
-                            </div>
-                            <div className="flex justify-end gap-4 pt-4">
-                                <button type="button" onClick={handleCloseModal} className="py-2 px-4 bg-gray-200 dark:bg-brand-dark-lightest text-gray-800 dark:text-brand-text font-semibold rounded-lg">Cancel</button>
-                                <button type="submit" className="py-2 px-4 bg-brand-accent text-white font-semibold rounded-lg">{editingSection ? 'Update' : 'Create'}</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
+                <SectionFormModal 
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={handleSaveSection}
+                    section={editingSection}
+                />
+            )}
+
+            {isAddItemModalOpen && selectedSectionId && (
+                <AddItemModal 
+                    isOpen={isAddItemModalOpen}
+                    onClose={() => setIsAddItemModalOpen(false)}
+                    onAddItem={handleAddItem}
+                    sectionId={selectedSectionId}
+                    metrics={allMetrics}
+                    metricGroups={allMetricGroups}
+                />
             )}
         </div>
     );
 };
 
+// --- Main Component ---
 export const Metrics: React.FC = () => {
     const [activeTab, setActiveTab] = useState('metrics');
 
     return (
-        <div>
-            <div className="flex border-b border-gray-200 dark:border-brand-dark-lightest">
+        <div className="p-4 sm:p-6 lg:p-8">
+            <div className="flex border-b border-gray-200 dark:border-brand-dark-lightest mb-4">
                 <button onClick={() => setActiveTab('metrics')} className={`py-2 px-4 text-sm font-medium ${activeTab === 'metrics' ? 'text-brand-accent border-b-2 border-brand-accent' : 'text-gray-500 hover:text-gray-700'}`}>
                     Metrics
                 </button>
@@ -469,7 +420,7 @@ export const Metrics: React.FC = () => {
                     Sections
                 </button>
             </div>
-            <div className="pt-4">
+            <div>
                 {activeTab === 'metrics' && <MetricsView />}
                 {activeTab === 'groups' && <MetricGroupsView />}
                 {activeTab === 'sections' && <SectionsView />}
@@ -477,3 +428,5 @@ export const Metrics: React.FC = () => {
         </div>
     );
 };
+
+export default Metrics;

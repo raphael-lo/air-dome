@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAppContext } from '../context/AppContext';
-import type { FanSet } from '../types';
+import type { FanSet } from '../backend/src/types';
 import { FanIcon, ShutdownIcon } from './icons/MetricIcons';
 
 interface FanControlCardProps {

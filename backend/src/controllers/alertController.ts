@@ -3,13 +3,13 @@ import db from '../services/databaseService';
 import { Alert } from '../models/alert';
 
 export const getAlerts = (req: Request, res: Response) => {
-  const { siteId } = req.query;
+  const { site_id } = req.query;
   let query = 'SELECT * FROM alerts';
   const params: string[] = [];
 
-  if (siteId) {
-    query += ' WHERE siteId = ?';
-    params.push(siteId as string);
+  if (site_id) {
+    query += ' WHERE site_id = ?';
+    params.push(site_id as string);
   }
 
   db.all(query, params, (err, rows: Alert[]) => {

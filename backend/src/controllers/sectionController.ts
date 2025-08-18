@@ -1,94 +1,86 @@
 import { Request, Response } from 'express';
-import db from '../services/databaseService';
-import { Section, SectionItem } from '../models/section';
+import * as sectionModel from '../models/section';
 
-export const createSection = (req: Request, res: Response) => {
-  const { name } = req.body;
-  db.run('INSERT INTO sections (name) VALUES (?)', [name], function(err) {
-    if (err) {
-      return res.status(500).json({ message: 'Error creating section', error: err.message });
+export const createSection = async (req: Request, res: Response) => {
+    try {
+        const section = await sectionModel.createSection(req.body);
+        res.status(201).json(section);
+    } catch (error) {
+        res.status(500).json({ message: 'Error creating section', error });
     }
-    res.status(201).json({ message: 'Section created', sectionId: this.lastID });
-  });
 };
 
-export const getSections = (req: Request, res: Response) => {
-  db.all('SELECT * FROM sections', (err, rows: Section[]) => {
-    if (err) {
-      res.status(500).json({ message: 'Error fetching sections', error: err.message });
-    } else {
-      res.json(rows);
+export const getSections = async (req: Request, res: Response) => {
+    try {
+        const sections = await sectionModel.getSections();
+        res.json(sections);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching sections', error });
     }
-  });
 };
 
-export const updateSection = (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { name } = req.body;
-  db.run('UPDATE sections SET name = ? WHERE id = ?', [name, id], function(err) {
-    if (err) {
-      res.status(500).json({ message: 'Error updating section', error: err.message });
-    } else if (this.changes === 0) {
-      res.status(404).json({ message: 'Section not found' });
-    } else {
-      res.json({ message: 'Section updated successfully' });
+export const updateSection = async (req: Request, res: Response) => {
+    try {
+        const section = await sectionModel.updateSection(Number(req.params.id), req.body);
+        res.json(section);
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating section', error });
     }
-  });
 };
 
-export const deleteSection = (req: Request, res: Response) => {
-  const { id } = req.params;
-  db.run('DELETE FROM sections WHERE id = ?', [id], function(err) {
-    if (err) {
-      res.status(500).json({ message: 'Error deleting section', error: err.message });
-    } else if (this.changes === 0) {
-      res.status(404).json({ message: 'Section not found' });
-    } else {
-      res.json({ message: 'Section deleted successfully' });
+export const deleteSection = async (req: Request, res: Response) => {
+    try {
+        await sectionModel.deleteSection(Number(req.params.id));
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ message: 'Error deleting section', error });
     }
-  });
 };
 
-export const addSectionItem = (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { item_id, item_type, item_order } = req.body;
-  db.run('INSERT INTO section_items (section_id, item_id, item_type, item_order) VALUES (?, ?, ?, ?)', [id, item_id, item_type, item_order], function(err) {
-    if (err) {
-      return res.status(500).json({ message: 'Error adding item to section', error: err.message });
+export const getSectionItems = async (req: Request, res: Response) => {
+    try {
+        const items = await sectionModel.getSectionItems(Number(req.params.id));
+        res.json(items);
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching section items', error });
     }
-    res.status(201).json({ message: 'Item added to section', sectionItemId: this.lastID });
-  });
 };
 
-export const updateSectionItems = (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { items } = req.body;
-  db.serialize(() => {
-    db.run('DELETE FROM section_items WHERE section_id = ?', [id], (err) => {
-      if (err) {
-        return res.status(500).json({ message: 'Error updating section items', error: err.message });
-      }
-    });
-    items.forEach((item: SectionItem) => {
-      db.run('INSERT INTO section_items (section_id, item_id, item_type, item_order) VALUES (?, ?, ?, ?)', [id, item.item_id, item.item_type, item.item_order], (err) => {
-        if (err) {
-          return res.status(500).json({ message: 'Error updating section items', error: err.message });
-        }
-      });
-    });
-    res.json({ message: 'Section items updated successfully' });
-  });
+export const addSectionItem = async (req: Request, res: Response) => {
+    try {
+        const sectionId = Number(req.params.id);
+        const { item_id, item_type, item_order } = req.body;
+        const newItem = { section_id: sectionId, item_id, item_type, item_order };
+        const item = await sectionModel.addSectionItem(newItem);
+        res.status(201).json(item);
+    } catch (error) {
+        res.status(500).json({ message: 'Error adding section item', error });
+    }
 };
 
-export const deleteSectionItem = (req: Request, res: Response) => {
-    const { id, itemId } = req.params;
-    db.run('DELETE FROM section_items WHERE section_id = ? AND id = ?', [id, itemId], function(err) {
-        if (err) {
-            res.status(500).json({ message: 'Error deleting section item', error: err.message });
-        } else if (this.changes === 0) {
-            res.status(404).json({ message: 'Section item not found' });
-        } else {
-            res.json({ message: 'Section item deleted successfully' });
-        }
-    });
+export const removeSectionItem = async (req: Request, res: Response) => {
+    try {
+        await sectionModel.removeSectionItem(Number(req.params.itemId));
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ message: 'Error removing section item', error });
+    }
+};
+
+export const updateSectionItemOrder = async (req: Request, res: Response) => {
+    try {
+        await sectionModel.updateSectionItemOrder(req.body);
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating section item order', error });
+    }
+};
+
+export const updateSectionOrder = async (req: Request, res: Response) => {
+    try {
+        await sectionModel.updateSectionOrder(req.body);
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ message: 'Error updating section order', error });
+    }
 };

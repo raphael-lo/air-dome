@@ -1,4 +1,4 @@
-export type View = 'dashboard' | 'alerts' | 'ventilation' | 'lighting' | 'emergency' | 'reports' | 'settings' | 'users' | 'register' | 'metrics';
+export type View = 'alert_settings' | 'dashboard' | 'alerts' | 'ventilation' | 'lighting' | 'emergency' | 'reports' | 'settings' | 'users' | 'register' | 'metrics';
 
 export type Language = 'en' | 'zh';
 
@@ -57,7 +57,7 @@ export interface AirDomeData {
 
 export interface Alert {
   id: string;
-  siteId: string;
+  site_id: string;
   parameter: string;
   message: string;
   severity: StatusLevel;
@@ -75,7 +75,7 @@ export interface FanSet {
 }
 
 export interface LightingState {
-    lightsOn: boolean;
+    lights_on: boolean;
     brightness: number;
 }
 
@@ -84,24 +84,86 @@ export interface User {
   username: string;
   role: 'Admin' | 'Operator' | 'Viewer';
   status: 'active' | 'disabled';
-  createdAt: string;
+  created_at: string;
 }
 
 export interface Metric {
-  id: number;
+  id?: number;
   mqtt_param: string;
+  device_param: string;
   display_name: string;
+  display_name_tc?: string;
   device_id: string;
-  group_id: number;
+  icon: string;
+  unit?: string;
+  itemId?: number;
+  section_item_id?: number;
 }
 
 export interface MetricGroup {
-  id: number;
+  id?: number;
   name: string;
+  name_tc?: string; // Added
+  icon: string;
+  metric1_id?: number;
+  metric1_display_name?: string;
+  metric1_display_name_tc?: string; // Added
+  metric2_id?: number;
+  metric2_display_name?: string;
+  metric2_display_name_tc?: string; // Added
 }
 
 export interface Section {
-  id: number;
+  id?: number;
   name: string;
-  items: (Metric | MetricGroup)[];
+  name_tc?: string;
+  item_order: number;
+}
+
+export interface SectionItem {
+  id?: number;
+  section_id: number;
+  item_id: number;
+  item_type: 'metric' | 'group';
+  item_order: number;
+}
+
+export interface DomeMetric {
+  metric_id: number;
+  mqtt_param: string;
+  display_name: string;
+  device_id: string;
+  icon: string;
+}
+
+export interface DomeMetricGroup {
+  metric_group_id: number;
+  metric_group_name: string;
+  metrics: DomeMetric[];
+}
+
+export interface DomeSectionItem {
+  item_id: number;
+  item_type: 'metric' | 'group';
+  section_item_order: number;
+}
+
+export interface DomeSection {
+  section_id: number;
+  section_name: string;
+  section_order: number;
+  items: (DomeMetric | DomeMetricGroup)[];
+}
+
+export interface AlertThreshold {
+  id: string;
+  site_id: string;
+  metric_id: number;
+  min_warning: number | null;
+  max_warning: number | null;
+  min_alert: number | null;
+  max_alert: number | null;
+  // These are for display and are joined from the metrics table
+  mqtt_param?: string;
+  display_name?: string;
 }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StatusLevel } from '../types';
+import { StatusLevel } from '../backend/src/types';
 import { useAppContext } from '../context/AppContext';
 
 export const SeverityBadge: React.FC<{ severity: StatusLevel }> = ({ severity }) => {
