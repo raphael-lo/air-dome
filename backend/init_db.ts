@@ -2,8 +2,21 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const DB_FILE = path.resolve(__dirname, 'air_dome.db');
+// Use environment variable for DB file path
+const DB_FILE = process.env.DATABASE_URL;
+
+if (!DB_FILE) {
+  console.error('DATABASE_URL environment variable is not set. Cannot initialize database.');
+  process.exit(1);
+}
+
 const INIT_SQL_FILE = path.resolve(__dirname, './src/config/init.sql');
+
+// Ensure the directory for the DB file exists
+const dbDir = path.dirname(DB_FILE);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
 
 const db = new sqlite3.Database(DB_FILE, (err) => {
   if (err) {

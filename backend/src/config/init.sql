@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS alert_thresholds (
 
 -- Seed Data --
 INSERT INTO users (username, password, role, status, created_at) 
-SELECT 'admin', '$2b$10$fSDH8l5HYggB9r8w9IgKeAZ1sx1WMMQQs60MCYdwlG9BayRmB9Te', 'Admin', 'active', strftime('%Y-%m-%dT%H:%M:%fZ', 'now') -- password
+SELECT 'admin', '$2b$10$wydOzraZ12j.hmkQnTeumOKGxj2eR/I3zjN2JSL0sxDqdiFIfP1WS', 'Admin', 'active', strftime('%Y-%m-%dT%H:%M:%fZ', 'now') -- password
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
 
 -- Metrics Seed Data --

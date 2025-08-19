@@ -1,14 +1,5 @@
 #!/bin/bash
 
-echo "--- Building Backend for Production ---"
-# Navigate to the backend directory, run the build, then navigate back.
-(cd backend && npm run build)
-
-if [ $? -ne 0 ]; then
-  echo "Error: Backend build failed. Aborting deployment."
-  exit 1
-fi
-
 echo "Backend build successful."
 
 

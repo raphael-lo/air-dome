@@ -21,7 +21,7 @@ services:
     environment:
       - PORT=3001 # Keep non-sensitive fixed values
     volumes:
-      - air_dome_db_data:/usr/src/app/air_dome.db # Persist the SQLite database
+      - air_dome_db_data:/usr/src/app/data # Mount the SQLite database directory
     command: npm start
 
   influxdb:
@@ -46,6 +46,21 @@ services:
       - mosquitto_data:/mosquitto/data
       - mosquitto_log:/mosquitto/log
       - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+    networks:
+      - air-dome-net
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/air-dome.conf:/etc/nginx/conf.d/default.conf:ro
+      - /etc/letsencrypt/:/etc/letsencrypt/:ro # Mount entire letsencrypt directory
+    depends_on:
+      - backend # Ensure Nginx starts after backend
+    restart: always
     networks:
       - air-dome-net
 
