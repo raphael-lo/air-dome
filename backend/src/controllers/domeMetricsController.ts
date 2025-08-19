@@ -163,6 +163,7 @@ export const getDomeMetricsStructure = (req: Request, res: Response) => {
               newMetricGroup.metric1Data = {
                 id: row.metric1_id,
                 mqtt_param: row.metric1_mqtt_param,
+                device_param: row.metric1_device_id, // Added
                 display_name: row.metric1_display_name,
                 device_id: row.metric1_device_id,
                 icon: row.metric1_icon,
@@ -173,6 +174,7 @@ export const getDomeMetricsStructure = (req: Request, res: Response) => {
               newMetricGroup.metric2Data = {
                 id: row.metric2_id,
                 mqtt_param: row.metric2_mqtt_param,
+                device_param: row.metric2_device_id, // Added
                 display_name: row.metric2_display_name,
                 device_id: row.metric2_device_id,
                 icon: row.metric2_icon,
@@ -188,11 +190,12 @@ export const getDomeMetricsStructure = (req: Request, res: Response) => {
             currentMetricGroup.metrics.push({
               id: row.metric_id,
               mqtt_param: row.mqtt_param,
+              device_param: row.device_id, // Added
               display_name: row.display_name,
               display_name_tc: row.metric_display_name_tc, // Add this
               device_id: row.device_id,
               icon: row.metric_icon, // Use metric_icon
-              unit: row.metric_unit, // Add this
+              unit: row.metric_unit, // Use metric_unit
             });
           }
 

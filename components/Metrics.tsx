@@ -15,12 +15,12 @@ import { CSS } from '@dnd-kit/utilities';
 import { DragHandleIcon } from './icons/NavIcons';
 import * as MetricIcons from './icons/MetricIcons';
 import { IconPicker } from './IconPicker';
-import { AddItemModal } from './AddItemModal';
 import { useAppContext } from '../context/AppContext';
 import { SpinnerIcon } from './icons/MetricIcons';
 import { SectionFormModal } from './SectionFormModal';
 import { MetricFormModal } from './MetricFormModal';
 import { MetricGroupFormModal } from './MetricGroupFormModal';
+import { SectionItemsModal } from './SectionItemsModal'; // Import the new modal
 
 // --- Types ---
 interface SectionWithItems extends Section {
@@ -234,8 +234,8 @@ const SectionsView: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingSection, setEditingSection] = useState<Partial<Section> | null>(null);
-    const [isAddItemModalOpen, setIsAddItemModalOpen] = useState(false);
-    const [selectedSectionId, setSelectedSectionId] = useState<number | null>(null);
+    const [isSectionItemsModalOpen, setIsSectionItemsModalOpen] = useState(false);
+    const [selectedSection, setSelectedSection] = useState<SectionWithItems | null>(null);
 
     const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
 
@@ -282,18 +282,7 @@ const SectionsView: React.FC = () => {
         }
     };
 
-    const handleAddItem = async (sectionId: number, itemType: 'metric' | 'group', itemId: number) => {
-        const section = sections.find(s => s.id === sectionId);
-        const newOrder = section ? section.items.length : 0;
-        await addSectionItem(sectionId, { item_id: itemId, item_type: itemType, item_order: newOrder }, { authenticatedFetch });
-        loadData();
-        setIsAddItemModalOpen(false);
-    };
-
-    const handleRemoveItem = async (sectionId: number, itemId: number) => {
-        await removeSectionItem(sectionId, itemId, { authenticatedFetch });
-        loadData();
-    };
+    
 
     const handleDragEnd = (event: DragEndEvent) => {
         const { active, over } = event;
@@ -307,32 +296,9 @@ const SectionsView: React.FC = () => {
                 const oldIndex = prev.findIndex(s => s.id === active.id);
                 const newIndex = prev.findIndex(s => s.id === over.id);
                 const reordered = arrayMove(prev, oldIndex, newIndex);
-                updateSectionOrder(reordered.map((s, i) => ({ id: s.id!, item_order: i })), { authenticatedFetch });
+                updateSectionOrder(reordered.map((s: Section, i) => ({ id: s.id!, item_order: i })), { authenticatedFetch });
                 return reordered;
             });
-        } else if (activeType === 'SectionItem' && over.data.current?.type === 'SectionItem') {
-            const activeSectionId = active.data.current?.sectionId;
-            const overSectionId = over.data.current?.sectionId;
-
-            if (activeSectionId === overSectionId) {
-                setSections(prev => {
-                    const sectionIndex = prev.findIndex(s => s.id === activeSectionId);
-                    if (sectionIndex === -1) return prev;
-
-                    const oldItemIndex = prev[sectionIndex].items.findIndex(i => i.id === active.id);
-                    const newItemIndex = prev[sectionIndex].items.findIndex(i => i.id === over.id);
-                    if (oldItemIndex === -1 || newItemIndex === -1) return prev;
-
-                    const reorderedItems = arrayMove(prev[sectionIndex].items, oldItemIndex, newItemIndex);
-                    const newSections = JSON.parse(JSON.stringify(prev));
-                    newSections[sectionIndex].items = reorderedItems;
-
-                    const updatedItems = newSections[sectionIndex].items.map((item, index) => ({ ...item, item_order: index }));
-                    updateSectionItems(activeSectionId, updatedItems, { authenticatedFetch });
-
-                    return newSections;
-                });
-            }
         }
     };
 
@@ -357,22 +323,21 @@ const SectionsView: React.FC = () => {
                                 <div className="flex justify-between items-center">
                                     <h3 className="text-lg font-bold">{section.name}</h3>
                                     <div>
-                                        <button onClick={() => {setSelectedSectionId(section.id!); setIsAddItemModalOpen(true);}} className="text-sm bg-blue-500 text-white py-1 px-2 rounded-md mr-2">Add Item</button>
+                                        <button onClick={() => {setSelectedSection(section); setIsSectionItemsModalOpen(true);}} className="text-sm bg-blue-500 text-white py-1 px-2 rounded-md mr-2">Manage Items</button>
                                         <button onClick={() => handleOpenModal(section)} className="text-sm text-blue-500">Edit</button>
                                         <button onClick={() => handleDeleteSection(section.id!)} className="text-sm text-red-500 ml-2">Delete</button>
                                     </div>
                                 </div>
                                 <div className="mt-2 pl-4 border-l-2 border-gray-200">
-                                    <SortableContext items={section.items.map(i => i.id!)} id={`section-${section.id}`}>
-                                        {section.items.map(item => (
-                                            <SortableItem key={item.id} id={item.id!} handle={true} data={{ type: 'SectionItem', sectionId: section.id! }}>
-                                                <div className="flex justify-between items-center w-full">
-                                                    <span>{getItemName(item)}</span>
-                                                    <button onClick={() => handleRemoveItem(section.id!, item.id!)} className="text-xs text-red-500">Remove</button>
-                                                </div>
-                                            </SortableItem>
-                                        ))}
-                                    </SortableContext>
+                                    {section.items.length === 0 ? (
+                                        <p className="text-gray-500 dark:text-brand-text-dim">No items in this section yet.</p>
+                                    ) : (
+                                        <ul className="list-disc list-inside">
+                                            {section.items.map(item => (
+                                                <li key={item.id} className="text-gray-700 dark:text-brand-text-dim">{item.item_type === 'metric' ? allMetrics.find(m => m.id === item.item_id)?.display_name : allMetricGroups.find(g => g.id === item.item_id)?.name}</li>
+                                            ))}
+                                        </ul>
+                                    )}
                                 </div>
                             </div>
                         </SortableItem>
@@ -389,14 +354,12 @@ const SectionsView: React.FC = () => {
                 />
             )}
 
-            {isAddItemModalOpen && selectedSectionId && (
-                <AddItemModal 
-                    isOpen={isAddItemModalOpen}
-                    onClose={() => setIsAddItemModalOpen(false)}
-                    onAddItem={handleAddItem}
-                    sectionId={selectedSectionId}
-                    metrics={allMetrics}
-                    metricGroups={allMetricGroups}
+            {isSectionItemsModalOpen && selectedSection && (
+                <SectionItemsModal
+                    isOpen={isSectionItemsModalOpen}
+                    onClose={() => setIsSectionItemsModalOpen(false)}
+                    section={selectedSection}
+                    onSave={loadData} // Callback to refresh sections after item changes
                 />
             )}
         </div>

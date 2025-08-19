@@ -53,8 +53,9 @@ CREATE TABLE IF NOT EXISTS section_items (
 CREATE TABLE IF NOT EXISTS alerts (
   id TEXT PRIMARY KEY,
   site_id TEXT,
-  parameter TEXT,
-  message TEXT,
+  parameter_key TEXT, -- Changed from 'parameter'
+  message_key TEXT,   -- Changed from 'message'
+  message_params TEXT, -- New field for JSON string of parameters
   severity TEXT,
   timestamp TEXT,
   status TEXT
@@ -99,12 +100,14 @@ INSERT INTO metrics (mqtt_param, device_param, display_name, display_name_tc, de
 INSERT INTO metrics (mqtt_param, device_param, display_name, display_name_tc, device_id, unit, icon) SELECT 'fanSpeed', 'sensor-21', 'Fan Speed', '風扇速度', 'sensor-21', 'RPM', 'FanIcon' WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE mqtt_param = 'fanSpeed' AND device_param = 'sensor-21');
 
 -- Metric Groups Seed Data --
-INSERT INTO metric_groups (name, name_tc, icon, metric1_id, metric2_id) SELECT 'Group Pressure', '壓力', 'PressureIcon', 1, 2 WHERE NOT EXISTS (SELECT 1 FROM metric_groups WHERE name = 'Pressure');
-INSERT INTO metric_groups (name, name_tc, icon, metric1_id, metric2_id) SELECT 'Group Temperature', '溫度', 'TempIcon', 3, 4 WHERE NOT EXISTS (SELECT 1 FROM metric_groups WHERE name = 'Temperature');
+INSERT INTO metric_groups (name, name_tc, icon, metric1_id, metric2_id) SELECT 'Group Pressure', '壓力', 'PressureIcon', 1, 2 WHERE NOT EXISTS (SELECT 1 FROM metric_groups WHERE name = 'Group Pressure');
+INSERT INTO metric_groups (name, name_tc, icon, metric1_id, metric2_id) SELECT 'Group Temperature', '溫度', 'TempIcon', 3, 4 WHERE NOT EXISTS (SELECT 1 FROM metric_groups WHERE name = 'Group Temperature');
 
 -- Sections Seed Data --
 INSERT INTO sections (name, item_order) SELECT 'Dome Integrity', 0 WHERE NOT EXISTS (SELECT 1 FROM sections WHERE name = 'Dome Integrity');
 INSERT INTO sections (name, item_order) SELECT 'Environment', 1 WHERE NOT EXISTS (SELECT 1 FROM sections WHERE name = 'Environment');
+INSERT INTO sections (name, item_order) SELECT 'Air Quality', 2 WHERE NOT EXISTS (SELECT 1 FROM sections WHERE name = 'Air Quality');
+INSERT INTO sections (name, item_order) SELECT 'Systems Status', 3 WHERE NOT EXISTS (SELECT 1 FROM sections WHERE name = 'Systems Status');
 
 -- Section Items Seed Data --
 INSERT INTO section_items (section_id, item_id, item_type, item_order) SELECT 1, 1, 'group', 0 WHERE NOT EXISTS (SELECT 1 FROM section_items WHERE section_id = 1 AND item_id = 1 AND item_type = 'group');
@@ -117,3 +120,16 @@ INSERT INTO fan_sets (id, name, status, mode, inflow, outflow) SELECT 'fan_set_2
 
 -- Lighting State Seed Data --
 INSERT INTO lighting_state (id, lights_on, brightness) SELECT 1, 1, 80 WHERE NOT EXISTS (SELECT 1 FROM lighting_state WHERE id = 1);
+
+-- Alert Thresholds Seed Data --
+INSERT INTO alert_thresholds (id, site_id, metric_id, min_warning, max_warning, min_alert, max_alert) 
+SELECT 'threshold-internal-pressure', 'site_a', (SELECT id FROM metrics WHERE mqtt_param = 'internalPressure'), 100, 150, 50, 200 
+WHERE NOT EXISTS (SELECT 1 FROM alert_thresholds WHERE id = 'threshold-internal-pressure');
+
+INSERT INTO alert_thresholds (id, site_id, metric_id, min_warning, max_warning, min_alert, max_alert) 
+SELECT 'threshold-external-temperature', 'site_a', (SELECT id FROM metrics WHERE mqtt_param = 'externalTemperature'), -5, 35, -10, 40 
+WHERE NOT EXISTS (SELECT 1 FROM alert_thresholds WHERE id = 'threshold-external-temperature');
+
+INSERT INTO alert_thresholds (id, site_id, metric_id, min_warning, max_warning, min_alert, max_alert) 
+SELECT 'threshold-internal-co2', 'site_a', (SELECT id FROM metrics WHERE mqtt_param = 'internalCO2'), 800, 1200, 1000, 1500 
+WHERE NOT EXISTS (SELECT 1 FROM alert_thresholds WHERE id = 'threshold-internal-co2');

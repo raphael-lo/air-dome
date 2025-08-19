@@ -138,29 +138,25 @@ export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestIn
 
     if (!wsRef.current || wsRef.current.readyState === WebSocket.CLOSED) {
       const ws = new WebSocket(WS_URL);
-      ws.onopen = () => console.log('Connected to WebSocket');
+      ws.onopen = () => {};
 
       ws.onmessage = (event) => {
         const newData = JSON.parse(event.data);
-        console.log('[WebSocket Receive]', newData);
         
         // Handle new alert broadcasts
         if (newData.type === 'new_alert') {
-            console.log('[WS] New alert received:', newData.payload);
-            onNewAlertRef.current(newData.payload);
-            console.log('[WS] onNewAlert callback executed.');
+            onNewAlertRef.current({ type: 'new_alert', payload: newData.payload });
+        } else if (newData.type === 'alert_status_updated') {
+            onNewAlertRef.current({ type: 'alert_status_updated', payload: newData.payload });
         } else {
             setDataRef.current((prevData) => {
           if (!prevData) return prevData;
 
-          console.log('[WS] prevData:', prevData); // Added log
           const updatedData = { ...prevData };
           const maxPoints = 40;
 
           for (const key in newData) {
-            console.log(`[WS] Checking key: ${key}, updatedData[key]:`, updatedData[key]); // Added log
             if (key !== 'timestamp' && updatedData[key]) {
-              console.log(`[WS] Updating key: ${key}`, newData[key]); // Added log
               const { value, status } = newData[key];
               
               updatedData[key].value = value;
@@ -179,14 +175,12 @@ export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestIn
             setLastUpdated(newData.timestamp);
             updatedData.timestamp = newData.timestamp;
           }
-          console.log('[WS] updatedData:', updatedData); // Added log
           return updatedData;
         });
       };
 
       ws.onerror = (event) => console.error('WebSocket error:', event);
       ws.onclose = (event) => {
-        console.log(`WebSocket disconnected: ${event.code} ${event.reason}`);
         wsRef.current = null;
       };
       wsRef.current = ws;

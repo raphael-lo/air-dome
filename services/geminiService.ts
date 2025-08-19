@@ -1,17 +1,8 @@
-import { GoogleGenAI } from "@google/genai";
 import type { AirDomeData, Alert, FanSet, LightingState, User, Metric, MetricGroup, Section, SectionItem } from '../backend/src/types';
 import { StatusLevel } from '../backend/src/types';
 import { initialMockAlerts } from '../constants';
 
-// IMPORTANT: This check is for the web demo environment.
-// In a real application, the API key would be securely managed.
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-export async function* analyzeDomeDataStream(data: AirDomeData, lang: 'en' | 'zh'): AsyncGenerator<string> {
+export async function* analyzeDomeDataStream(data: AirDomeData, lang: 'en' | 'zh', { authenticatedFetch }: AuthenticatedFetch): AsyncGenerator<string> {
   const languageInstruction = lang === 'zh' 
     ? "請用繁體中文回答。" 
     : "Please respond in English.";
@@ -33,16 +24,37 @@ export async function* analyzeDomeDataStream(data: AirDomeData, lang: 'en' | 'zh
   `;
 
   try {
-    const stream = await ai.models.generateContentStream({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
+    const response = await authenticatedFetch(`${BASE_URL}/analyze-dome-data`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data, lang, prompt }),
     });
 
-    for await (const chunk of stream) {
-      yield chunk.text;
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to get AI analysis: ${response.status} ${response.statusText} - ${errorText}`);
     }
+
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("Failed to get readable stream from response.");
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+
+      // Process chunks as they arrive (assuming server sends newline-delimited JSON or plain text chunks)
+      // For plain text streaming, we can yield directly
+      yield buffer;
+      buffer = ''; // Clear buffer after yielding
+    }
+
   } catch (error) {
-    console.error("Error calling Gemini API:", error);
+    console.error("Error calling backend AI proxy:", error);
     yield lang === 'zh' ? "AI 分析時發生錯誤。請稍後再試。" : "An error occurred during AI analysis. Please try again later.";
   }
 }

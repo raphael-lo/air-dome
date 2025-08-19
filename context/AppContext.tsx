@@ -11,7 +11,7 @@ interface AppContextType {
   setLanguage: (language: Language) => void;
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, any>) => string;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -48,8 +48,14 @@ export const AppContextProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [language]);
 
   const t = useMemo(() => {
-    return (key: string): string => {
-      return TRANSLATIONS[language][key] || key;
+    return (key: string, params?: Record<string, any>): string => {
+      let translation = TRANSLATIONS[language][key] || key;
+      if (params) {
+        for (const paramKey in params) {
+          translation = translation.replace(new RegExp(`\\{${paramKey}\\}`, 'g'), params[paramKey]);
+        }
+      }
+      return translation;
     };
   }, [language]);
 

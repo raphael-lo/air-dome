@@ -259,10 +259,10 @@ const AppContent: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('dashboard');
 
   // Log API and WebSocket URLs to console for debugging
-  useEffect(() => {
-    console.log('API Base URL:', config.apiBaseUrl);
-    console.log('WebSocket URL:', config.wsUrl);
-  }, []);
+//   useEffect(() => {
+//     console.log('API Base URL:', config.apiBaseUrl);
+//     console.log('WebSocket URL:', config.wsUrl);
+//   }, []);
 
   if (!isAuthenticated) {
     return <LoginPage />;

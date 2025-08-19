@@ -25,11 +25,11 @@ export const NAV_ITEMS: { id: View; icon: React.FC<React.SVGProps<SVGSVGElement>
 ];
 
 export const initialMockAlerts: Alert[] = [
-  { id: '1', site_id: 'site_a', parameter: 'membrane_health', message: 'membrane_defect_alert', severity: StatusLevel.Danger, timestamp: new Date(Date.now() - 3600000).toISOString(), status: 'active' },
-  { id: '2', site_id: 'site_a', parameter: 'internal_air_quality_co2', message: 'high_co2_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 7200000).toISOString(), status: 'active' },
-  { id: '3', site_id: 'site_b', parameter: 'internal_pressure', message: 'high_pressure_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 86400000).toISOString(), status: 'resolved' },
-  { id: '4', site_id: 'site_a', parameter: 'internal_noise_level', message: 'noise_level_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 172800000).toISOString(), status: 'acknowledged' },
-  { id: '5', site_id: 'site_c', parameter: 'power_consumption', message: 'high_pressure_alert', severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 172800000).toISOString(), status: 'active' },
+  { id: '1', site_id: 'site_a', parameter_key: 'membrane_health', message_key: 'alert_threshold_exceeded', message_params: { metricName: 'Membrane Health', deviceId: 'N/A', severity: StatusLevel.Danger, value: 'N/A', unit: '' }, severity: StatusLevel.Danger, timestamp: new Date(Date.now() - 3600000).toISOString(), status: 'active' },
+  { id: '2', site_id: 'site_a', parameter_key: 'internal_air_quality_co2', message_key: 'alert_threshold_exceeded', message_params: { metricName: 'Internal CO2', deviceId: 'N/A', severity: StatusLevel.Warn, value: 'N/A', unit: 'ppm' }, severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 7200000).toISOString(), status: 'active' },
+  { id: '3', site_id: 'site_b', parameter_key: 'internal_pressure', message_key: 'alert_threshold_exceeded', message_params: { metricName: 'Internal Pressure', deviceId: 'N/A', severity: StatusLevel.Warn, value: 'N/A', unit: 'Pa' }, severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 86400000).toISOString(), status: 'resolved' },
+  { id: '4', site_id: 'site_a', parameter_key: 'internal_noise_level', message_key: 'alert_threshold_exceeded', message_params: { metricName: 'Internal Noise', deviceId: 'N/A', severity: StatusLevel.Warn, value: 'N/A', unit: 'dB' }, severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 172800000).toISOString(), status: 'acknowledged' },
+  { id: '5', site_id: 'site_c', parameter_key: 'power_consumption', message_key: 'alert_threshold_exceeded', message_params: { metricName: 'Power Consumption', deviceId: 'N/A', severity: StatusLevel.Warn, value: 'N/A', unit: 'W' }, severity: StatusLevel.Warn, timestamp: new Date(Date.now() - 172800000).toISOString(), status: 'active' },
 ];
 
 export const TRANSLATIONS: Record<Language, Record<string, string>> = {
@@ -125,8 +125,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'section_systems_status_name': 'Systems Status',
 
     // Alerts
-    'active_alerts': 'Active Alerts',
+    'active_alerts': 'Latest 3 Active Alerts',
+    'alerts_page_title': 'Active Alerts',
     'alert_history': 'Alert History',
+    'last_updated': 'Last updated at',
     'parameter': 'Parameter',
     'message': 'Message',
     'severity': 'Severity',
@@ -141,6 +143,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'high': 'High',
     'acknowledge': 'Acknowledge',
     'no_active_alerts': 'No active alerts for this site.',
+    'alert_threshold_exceeded': 'The {metricName} ({deviceId}) has exceeded the {severity} threshold. Value: {value}{unit}',
+    'ok': 'Ok',
+    'warn': 'Warn',
+    'danger': 'Danger',
     
     // Controls
     'ventilation_control': 'Ventilation Control',
@@ -329,8 +335,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'section_systems_status_name': '系統狀態',
 
     // Alerts
-    'active_alerts': '活躍警報',
+    'active_alerts': '最新的3個活躍警報',
+    'alerts_page_title': '活躍警報',
     'alert_history': '警報歷史',
+    'last_updated': '最後更新時間',
     'parameter': '參數',
     'message': '訊息',
     'severity': '嚴重性',
@@ -345,6 +353,10 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'high': '高',
     'acknowledge': '確認',
     'no_active_alerts': '此站點無活躍警報。',
+    'alert_threshold_exceeded': '{metricName} ({deviceId}) 已超出 {severity} 閾值。值：{value}{unit}',
+    'ok': '正常',
+    'warn': '警告',
+    'danger': '危險',
 
     // Controls
     'ventilation_control': '通風控制',

@@ -58,8 +58,9 @@ export interface AirDomeData {
 export interface Alert {
   id: string;
   site_id: string;
-  parameter: string;
-  message: string;
+  parameter_key: string; // Changed from 'parameter'
+  message_key: string;   // Changed from 'message'
+  message_params: Record<string, any>; // New field for message parameters
   severity: StatusLevel;
   timestamp: string;
   status: 'active' | 'acknowledged' | 'resolved';

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import db from '../services/databaseService';
 import { Alert } from '../models/alert';
+import { broadcast } from '../services/websocketService'; // Import broadcast
 
 export const getAlerts = (req: Request, res: Response) => {
   const { site_id } = req.query;
@@ -16,7 +17,11 @@ export const getAlerts = (req: Request, res: Response) => {
     if (err) {
       res.status(500).json({ message: 'Error fetching alerts', error: err.message });
     } else {
-      res.json(rows);
+      const parsedRows = rows.map(row => ({
+        ...row,
+        message_params: typeof row.message_params === 'string' ? JSON.parse(row.message_params) : {},
+      }));
+      res.json(parsedRows);
     }
   });
 };
@@ -30,6 +35,8 @@ export const acknowledgeAlert = (req: Request, res: Response) => {
     } else if (this.changes === 0) {
       res.status(404).json({ message: 'Alert not found' });
     } else {
+      // After successful update, broadcast the change
+      broadcast({ type: 'alert_status_updated', payload: { id: alertId, status: 'acknowledged' } });
       res.json({ message: 'Alert acknowledged successfully' });
     }
   });

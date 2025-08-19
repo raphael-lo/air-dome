@@ -6,24 +6,22 @@ services:
     container_name: backend
     ports:
       - "3001:3001"
-    volumes:
-      - ./backend:/usr/src/app
-      - /usr/src/app/node_modules
+    # Remove bind mounts for production
+    # volumes:
+    #   - ./backend:/usr/src/app
+    #   - /usr/src/app/node_modules
     depends_on:
       - influxdb
       - mqtt-broker
     restart: always
     networks:
       - air-dome-net
+    env_file:
+      - ./.env # Reference the .env file on the EC2 instance
     environment:
-      - PORT=3001
-      - DATABASE_URL=./air_dome.db
-      - INFLUXDB_URL=http://influxdb:8086
-      - INFLUXDB_TOKEN=my-super-secret-token
-      - INFLUXDB_ORG=my-org
-      - INFLUXDB_BUCKET=my-bucket
-      - MQTT_BROKER_URL=mqtt://mqtt-broker:1883
-      - CORS_ORIGIN=https://air-dome.yotatech.com.hk
+      - PORT=3001 # Keep non-sensitive fixed values
+    volumes:
+      - air_dome_db_data:/usr/src/app/air_dome.db # Persist the SQLite database
     command: npm start
 
   influxdb:
@@ -33,13 +31,8 @@ services:
       - "8086:8086"
     volumes:
       - influxdb_data:/var/lib/influxdb2
-    environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=my-user
-      - DOCKER_INFLUXDB_INIT_PASSWORD=my-password
-      - DOCKER_INFLUXDB_INIT_ORG=my-org
-      - DOCKER_INFLUXDB_INIT_BUCKET=my-bucket
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-secret-token
+    env_file:
+      - ./.env # Reference the .env file for InfluxDB init variables
     networks:
       - air-dome-net
 
@@ -60,6 +53,7 @@ volumes:
   influxdb_data:
   mosquitto_data:
   mosquitto_log:
+  air_dome_db_data: # Define the named volume for the SQLite database
 
 networks:
   air-dome-net:

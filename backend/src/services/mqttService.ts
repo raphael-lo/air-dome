@@ -28,25 +28,30 @@ const getStatusForMetric = (value: number, threshold: AlertThreshold | undefined
   return StatusLevel.Ok;
 };
 
-const createAlert = (metric: Metric, severity: StatusLevel) => {
+const createAlert = (metric: Metric, severity: StatusLevel, value: number, unit?: string) => {
     const newAlert = {
         id: uuidv4(),
         site_id: '1', // Assuming a single site for now
-        parameter: metric.display_name,
-        message: `${metric.display_name} (${metric.device_id}) has exceeded the ${severity} threshold.`,
+        parameter_key: metric.display_name, // Use display_name as the key for parameter
+        message_key: 'alert_threshold_exceeded', // Generic message key
+        message_params: {
+            metricName: metric.display_name,
+            deviceId: metric.device_id,
+            severity: severity,
+            value: value,
+            unit: unit || '',
+        },
         severity,
         timestamp: new Date().toISOString(),
         status: 'active',
     };
     db.run(
-        'INSERT INTO alerts (id, site_id, parameter, message, severity, timestamp, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [newAlert.id, newAlert.site_id, newAlert.parameter, newAlert.message, newAlert.severity, newAlert.timestamp, newAlert.status],
+        'INSERT INTO alerts (id, site_id, parameter_key, message_key, message_params, severity, timestamp, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [newAlert.id, newAlert.site_id, newAlert.parameter_key, newAlert.message_key, JSON.stringify(newAlert.message_params), newAlert.severity, newAlert.timestamp, newAlert.status],
         (err) => {
             if (err) {
                 console.error('Error creating alert in database:', err);
             } else {
-                console.log(`New alert created for ${metric.display_name} with severity ${severity}`);
-                console.log(`[MQTT Service] Broadcasting new alert:`, newAlert);
                 broadcast({ type: 'new_alert', payload: newAlert });
             }
         }
@@ -54,39 +59,35 @@ const createAlert = (metric: Metric, severity: StatusLevel) => {
 };
 
 const processMetric = (device_param: string, mqtt_param: string, value: any, timestamp: string) => {
-    console.log(`[ProcessMetric] Received: ${device_param}/${mqtt_param} = ${value}`);
     if (typeof value !== 'number') return;
 
     writeMetric('sensor_data', mqtt_param, value, { device_id: device_param });
 
     const metric = metrics.find(m => m.device_param === device_param && m.mqtt_param === mqtt_param);
     if (!metric) {
-        console.warn(`[ProcessMetric] No metric found for device_param: ${device_param}, mqtt_param: ${mqtt_param}`);
         return;
     }
-    console.log(`[ProcessMetric] Found metric:`, metric);
 
     const threshold = alertThresholds.find(t => t.metric_id === metric.id);
     const newStatus = getStatusForMetric(value, threshold);
-    console.log(`[ProcessMetric] Value: ${value}, Threshold: ${JSON.stringify(threshold)}, New Status: ${newStatus}`);
 
     broadcast({ [mqtt_param]: { value, status: newStatus, device_id: metric.device_id }, timestamp });
 
     if (threshold) {
         const stateKey = `${device_param}/${mqtt_param}`;
         const currentStatus = metricStates[stateKey] || StatusLevel.Ok;
-        console.log(`[ProcessMetric] State Key: ${stateKey}, Current Status: ${currentStatus}, New Status: ${newStatus}`);
 
         if (severityOrder[newStatus] > severityOrder[currentStatus]) {
-            console.log(`[ProcessMetric] Status changed for the worse! Creating alert...`);
-            createAlert(metric, newStatus);
+            createAlert(metric, newStatus, value, metric.unit);
+        } else if (severityOrder[newStatus] < severityOrder[currentStatus]) {
+            // Optionally, you could acknowledge/resolve existing alerts here if needed
+        } else {
         }
         metricStates[stateKey] = newStatus;
     }
 }
 
 const initializeAlerting = (): Promise<void> => {
-  console.log('Initializing alerting service...');
   return new Promise((resolve, reject) => {
     db.all('SELECT * FROM metrics', [], (err, fetchedMetrics: Metric[]) => {
       if (err) {
@@ -99,7 +100,6 @@ const initializeAlerting = (): Promise<void> => {
           const stateKey = `${m.device_param}/${m.mqtt_param}`;
           metricStates[stateKey] = StatusLevel.Ok;
       });
-      console.log(`Initialized states for ${metrics.length} metrics.`);
 
       db.all('SELECT * FROM alert_thresholds', [], (err, fetchedThresholds: AlertThreshold[]) => {
         if (err) {
@@ -107,7 +107,6 @@ const initializeAlerting = (): Promise<void> => {
           return reject(err);
         }
         alertThresholds = fetchedThresholds;
-        console.log(`Cached ${alertThresholds.length} alert thresholds.`);
         resolve();
       });
     });
@@ -127,26 +126,21 @@ const MQTT_CONFIG_UPDATE_TOPIC = process.env.MQTT_CONFIG_UPDATE_TOPIC || 'air-do
 export const mqttClient = mqtt.connect(MQTT_BROKER_URL);
 
 mqttClient.on('connect', async () => {
-  console.log('Connected to MQTT broker');
-  
   try {
     await initializeAlerting();
 
     const dataTopic = `${MQTT_DATA_TOPIC_PREFIX}/#`;
     mqttClient.subscribe(dataTopic, (err) => {
       if (err) console.error('Failed to subscribe to data topic:', err);
-      else console.log(`Subscribed to topic: ${dataTopic}`);
     });
 
     mqttClient.subscribe(MQTT_CONFIG_UPDATE_TOPIC, (err) => {
       if (err) console.error('Failed to subscribe to config update topic:', err);
-      else console.log(`Subscribed to topic: ${MQTT_CONFIG_UPDATE_TOPIC}`);
     });
 
     mqttClient.on('message', (topic, message) => {
       try {
         if (topic === MQTT_CONFIG_UPDATE_TOPIC) {
-            console.log('Received config update notification. Reloading thresholds...');
             initializeAlerting();
             return;
         }

@@ -7,11 +7,9 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true // Added for production debugging
   },
-  "ts-node": {
-    "compilerOptions": {
-      "module": "CommonJS"
-    }
-  }
+  "include": ["./src/**/*.ts"], // Explicitly include source files
+  "exclude": ["./src/**/*.test.ts", "./src/**/*.spec.ts", "./src/tests", "./node_modules", "./dist"] // Exclude test files and build artifacts
 }

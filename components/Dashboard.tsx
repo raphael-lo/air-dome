@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useAppContext } from '../context/AppContext';
 import { useAirDomeData } from '../hooks/useAirDomeData';
@@ -83,15 +83,20 @@ const ChartModal: React.FC<{ content: ChartModalContent | null; onClose: () => v
 export const Dashboard: React.FC = () => {
   const { selectedSite, t, language } = useAppContext();
   const { authenticatedFetch } = useAuth();
-  const { data, isLoading: isLoadingData, lastUpdated } = useAirDomeData(selectedSite, authenticatedFetch, (newAlert) => {
-    console.log('[Dashboard] Received new alert in callback:', newAlert);
-    setActiveAlerts(prevAlerts => {
-      const updatedAlerts = [newAlert, ...prevAlerts];
-      return updatedAlerts
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 3);
-    });
-    console.log('[Dashboard] activeAlerts state updated.');
+  const { data, isLoading: isLoadingData, lastUpdated } = useAirDomeData(selectedSite, authenticatedFetch, (message) => {
+    if (message.type === 'new_alert') {
+      setActiveAlerts(prevAlerts => {
+        const uniqueAlertsMap = new Map<string, Alert>();
+        prevAlerts.forEach(alert => uniqueAlertsMap.set(alert.id, alert));
+        uniqueAlertsMap.set(message.payload.id, message.payload);
+        const updatedAlerts = Array.from(uniqueAlertsMap.values());
+        return updatedAlerts
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+          .slice(0, 3);
+      });
+    } else if (message.type === 'alert_status_updated') {
+      loadAlerts(); // Re-fetch all active alerts to reflect the change
+    }
   });
   
   const [activeAlerts, setActiveAlerts] = useState<Alert[]>([]);
@@ -101,15 +106,18 @@ export const Dashboard: React.FC = () => {
   const [chartModalContent, setChartModalContent] = useState<ChartModalContent | null>(null);
   const [domeMetricsStructure, setDomeMetricsStructure] = useState<DomeSection[]>([]);
 
+  const loadAlerts = useCallback(async () => {
+    const allAlerts = await fetchAlerts(selectedSite.id, { authenticatedFetch });
+    const filteredActiveAlerts = allAlerts
+      .filter(a => {
+        return a.status === 'active';
+      })
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 3);
+    setActiveAlerts(filteredActiveAlerts);
+  }, [selectedSite, authenticatedFetch]);
+
   useEffect(() => {
-    const loadAlerts = async () => {
-      const allAlerts = await fetchAlerts(selectedSite.id, { authenticatedFetch });
-      const filteredActiveAlerts = allAlerts
-        .filter(a => a.status === 'active')
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 3);
-      setActiveAlerts(filteredActiveAlerts);
-    };
     loadAlerts();
 
     const fetchDomeMetricsStructure = async () => {
@@ -182,7 +190,7 @@ export const Dashboard: React.FC = () => {
     setAnalysis('');
     
     try {
-        const stream = analyzeDomeDataStream(data, language);
+        const stream = analyzeDomeDataStream(data, language, { authenticatedFetch });
         for await (const chunk of stream) {
             setAnalysis(prev => prev + chunk);
         }
@@ -237,13 +245,13 @@ export const Dashboard: React.FC = () => {
               <h2 className="text-xl font-bold text-gray-900 dark:text-brand-text">{t('active_alerts')}</h2>
           </div>
           <ul className="space-y-4">
-              {[...new Map(activeAlerts.map(item => [item.id, item])).values()].map(alert => (
+              {activeAlerts.map(alert => (
                   <li key={alert.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-gray-50 dark:bg-brand-dark rounded-lg gap-2">
                       <div className="flex items-center">
                           <SeverityBadge severity={alert.severity} />
                           <div className="ml-4">
-                              <p className="font-semibold text-gray-800 dark:text-brand-text">{t(alert.parameter)}</p>
-                              <p className="text-sm text-gray-600 dark:text-brand-text-dim">{t(alert.message)}</p>
+                              <p className="font-semibold text-gray-800 dark:text-brand-text">{t(alert.parameter_key)}</p>
+                              <p className="text-sm text-gray-600 dark:text-brand-text-dim">{t(alert.message_key, alert.message_params)}</p>
                           </div>
                       </div>
                       <span className="text-sm text-gray-500 dark:text-brand-text-dim sm:ml-4 flex-shrink-0">{new Date(alert.timestamp).toLocaleString(language)}</span>

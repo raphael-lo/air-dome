@@ -12,31 +12,44 @@ export const AlertSetting: React.FC = () => {
   const [metrics, setMetrics] = useState<Metric[]>([]);
 
   useEffect(() => {
-    if (selectedSite) {
-      fetchAlertThresholds(selectedSite);
-    }
-    const fetchMetrics = async () => {
+    const loadInitialData = async () => {
+      if (!selectedSite) return;
+
+      // Fetch metrics first
+      let fetchedMetrics: Metric[] = [];
       try {
         const response = await authenticatedFetch('/api/metrics');
         if (response.ok) {
-          const data = await response.json();
-          setMetrics(data);
+          fetchedMetrics = await response.json();
+          setMetrics(fetchedMetrics);
         } else {
           console.error('Failed to fetch metrics', response.statusText);
         }
       } catch (error) {
         console.error('Error fetching metrics:', error);
       }
+
+      // Then fetch alert thresholds using the fetched metrics
+      fetchAlertThresholds(selectedSite, fetchedMetrics);
     };
-    fetchMetrics();
+    loadInitialData();
   }, [selectedSite, authenticatedFetch]);
 
-  const fetchAlertThresholds = async (site: Site) => {
+  const fetchAlertThresholds = async (site: Site, allMetrics: Metric[]) => {
     try {
       const response = await authenticatedFetch(`/api/alert-thresholds/${site.id}`);
       if (response.ok) {
-        const data = await response.json();
-        setAlertThresholds(data);
+        const data: AlertThreshold[] = await response.json();
+        // Map metric display names onto the thresholds
+        const thresholdsWithMetricNames = data.map(threshold => {
+          const metric = allMetrics.find(m => m.id === threshold.metric_id);
+          return {
+            ...threshold,
+            display_name: metric?.display_name, // Add display_name
+            display_name_tc: metric?.display_name_tc, // Add display_name_tc
+          };
+        });
+        setAlertThresholds(thresholdsWithMetricNames);
       } else {
         console.error('Failed to fetch alert thresholds', response.statusText);
       }
@@ -50,16 +63,15 @@ export const AlertSetting: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (metric_id: number) => {
-    const metricName = metrics.find(m => m.id === metric_id)?.display_name || 'this metric';
+  const handleDelete = async (thresholdId: string, metricName: string) => {
     if (!selectedSite || !confirm(t('confirm_delete_alert_threshold').replace('{{metricName}}', metricName))) return;
 
     try {
-      const response = await authenticatedFetch(`/api/alert-thresholds/${selectedSite.id}/${metric_id}`, {
+      const response = await authenticatedFetch(`/api/alert-thresholds/${selectedSite.id}/${thresholdId}`, {
         method: 'DELETE',
       });
       if (response.ok) {
-        fetchAlertThresholds(selectedSite);
+        fetchAlertThresholds(selectedSite, metrics);
       } else {
         console.error('Failed to delete alert threshold', response.statusText);
       }
@@ -74,18 +86,29 @@ export const AlertSetting: React.FC = () => {
 
     try {
       const { id, metric_id, min_warning, max_warning, min_alert, max_alert } = editingThreshold;
-      const requestBody = { id, metric_id, min_warning, max_warning, min_alert, max_alert };
+      const requestBody = { metric_id, min_warning, max_warning, min_alert, max_alert };
 
-      const response = await authenticatedFetch(`/api/alert-thresholds/${selectedSite.id}/${editingThreshold.metric_id}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody),
-        }
-      );
+      let response;
+      if (id) { // Existing threshold, use PUT
+        response = await authenticatedFetch(`/api/alert-thresholds/${selectedSite.id}/${id}`,
+          {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+          }
+        );
+      } else { // New threshold, use POST
+        response = await authenticatedFetch(`/api/alert-thresholds/${selectedSite.id}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestBody),
+          }
+        );
+      }
 
       if (response.ok) {
-        fetchAlertThresholds(selectedSite);
+        fetchAlertThresholds(selectedSite, metrics);
         setIsModalOpen(false);
         setEditingThreshold(null);
       } else {
@@ -153,7 +176,7 @@ export const AlertSetting: React.FC = () => {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-brand-text-dim">{threshold.max_alert ?? 'N/A'}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button onClick={() => handleEdit(threshold)} className="text-brand-accent hover:text-brand-accent-light mr-3">{t('edit')}</button>
-                      <button onClick={() => handleDelete(threshold.metric_id)} className="text-red-600 hover:text-red-900">{t('delete')}</button>
+                      <button onClick={() => handleDelete(threshold.id, t(threshold.display_name || threshold.mqtt_param || 'N/A'))} className="text-red-600 hover:text-red-900">{t('delete')}</button>
                     </td>
                   </tr>
                 ))}

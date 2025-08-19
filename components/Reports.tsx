@@ -22,7 +22,7 @@ const reportOptions: { value: ReportableMetric; labelKey: string; unit: string }
 export const Reports: React.FC = () => {
     const { t, selectedSite } = useAppContext();
     const { authenticatedFetch } = useAuth();
-    const { data: domeData, isLoading } = useAirDomeData(selectedSite, authenticatedFetch);
+    const { data: domeData, isLoading } = useAirDomeData(selectedSite, authenticatedFetch, () => {});
 
     const [reportType, setReportType] = useState<ReportableMetric>(reportOptions[0].value);
     const [timeRange, setTimeRange] = useState('daily');
