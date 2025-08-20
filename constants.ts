@@ -71,7 +71,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
 
 
     // Sites
-    'site_a': 'Site A',
+    'site_a': 'Demo site',
     'site_b': 'Site B',
     'site_c': 'Site C',
 
@@ -267,7 +267,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'register_now': '立即註冊',
 
     // Sites
-    'site_a': '站點 A',
+    'site_a': 'Demo 站點',
     'site_b': '站點 B',
     'site_c': '站點 C',
 

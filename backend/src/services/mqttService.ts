@@ -120,10 +120,16 @@ const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL;
 if (!MQTT_BROKER_URL) {
   throw new Error('MQTT_BROKER_URL environment variable is not set.');
 }
+// const MQTT_DATA_TOPIC_PREFIX = process.env.MQTT_DATA_TOPIC_PREFIX || 'air-dome/data';
 const MQTT_DATA_TOPIC_PREFIX = process.env.MQTT_DATA_TOPIC_PREFIX || 'air-dome/data';
 const MQTT_CONFIG_UPDATE_TOPIC = process.env.MQTT_CONFIG_UPDATE_TOPIC || 'air-dome/config/update';
+const SENSOR_TOPIC_WILDCARD = 'fs/lot/env_quality_v1/fushentest001/#'; // Listen for up, down, etc.
 
-export const mqttClient = mqtt.connect(MQTT_BROKER_URL);
+
+export const mqttClient = mqtt.connect(MQTT_BROKER_URL, {
+    username: process.env.MQTT_USERNAME,
+    password: process.env.MQTT_PASSWORD,
+});
 
 mqttClient.on('connect', async () => {
   try {
@@ -132,10 +138,17 @@ mqttClient.on('connect', async () => {
     const dataTopic = `${MQTT_DATA_TOPIC_PREFIX}/#`;
     mqttClient.subscribe(dataTopic, (err) => {
       if (err) console.error('Failed to subscribe to data topic:', err);
+      else console.log(`Subscribed to data topic: ${dataTopic}`);
     });
 
     mqttClient.subscribe(MQTT_CONFIG_UPDATE_TOPIC, (err) => {
       if (err) console.error('Failed to subscribe to config update topic:', err);
+    });
+
+    // Subscribe to the CORRECT sensor topic wildcard
+    mqttClient.subscribe(SENSOR_TOPIC_WILDCARD, (err) => {
+        if (err) console.error(`Failed to subscribe to sensor topic: ${SENSOR_TOPIC_WILDCARD}`, err);
+        else console.log(`Subscribed to sensor topic: ${SENSOR_TOPIC_WILDCARD}`);
     });
 
     mqttClient.on('message', (topic, message) => {
@@ -145,7 +158,27 @@ mqttClient.on('connect', async () => {
             return;
         }
 
-        if (topic.startsWith(MQTT_DATA_TOPIC_PREFIX)) {
+        // Handle the physical sensor data
+        if (topic.startsWith('fs/lot/env_quality_v1/fushentest001/')) {
+            const data = JSON.parse(message.toString());
+            const deviceId = data.deviceid || 'fushentest001'; // Use deviceid from payload, fallback to topic part
+            const timestamp = data.timestamp ? new Date(parseInt(data.timestamp)).toISOString() : new Date().toISOString();
+
+            console.log(`Processing incoming data for device: ${deviceId}`);
+
+            // Iterate over all potential metrics in the payload
+            for (const key in data) {
+                const value = data[key];
+                // Ensure value is a number and key is not a metadata field
+                if (typeof value === 'number') {
+                    processMetric(deviceId, key, value, timestamp);
+                }
+            }
+            return;
+        }
+
+        // Handle original simulator/other sensor data
+        if (MQTT_DATA_TOPIC_PREFIX && topic.startsWith(MQTT_DATA_TOPIC_PREFIX)) {
             const topicParts = topic.substring(MQTT_DATA_TOPIC_PREFIX.length + 1).split('/');
             if (topicParts.length < 2) return; // Ignore invalid topics
 

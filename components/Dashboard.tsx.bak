@@ -260,18 +260,140 @@ export const Dashboard: React.FC = () => {
           </ul>
       </div>}
 
+      <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-brand-text">Dome Metrics</h2>
+          {lastUpdated && (
+            <p className="text-sm text-gray-500 dark:text-brand-text-dim">
+              Last Updated: {new Date(lastUpdated).toLocaleString(language)}
+            </p>
+          )}
+      </div>
+      
+      <div className="space-y-6">
+        { (data.internalPressure.value !== 0 || data.externalPressure.value !== 0 || data.basePressure.value !== 0 || data.fanSpeed.value !== 0) && (
+        <MetricGroup title={metricGroupTitles.dome_integrity} isOpen={openSections[metricGroupTitles.dome_integrity]} onToggle={() => toggleSection(metricGroupTitles.dome_integrity)}>
+            <PairedMetricCard title={`${t('pressure')}`} icon={<Icons.PressureIcon />} 
+                internalUnit="hPa" 
+                externalUnit="hPa" 
+                internalData={{ value: data.internalPressure.value?.toFixed(1) ?? 'N/A', status: data.internalPressure.status }}
+                externalData={{ value: data.externalPressure.value?.toFixed(1) ?? 'N/A', status: data.externalPressure.status }}
+                internalLabel={t('internal')}
+                externalLabel={t('external')}
+                onClick={() => handlePairedMetricClick(`${t('pressure')}`, 'internalPressure', 'externalPressure', 'hPa', 'hPa', t('internal'), t('external'))}
+            />
+            {data.basePressure && <MetricCard title={t('base_corner_pressure')} value={data.basePressure.value?.toFixed(1) ?? 'N/A'} unit="kPa" status={data.basePressure.status} icon={<Icons.PressureIcon />} onClick={() => handleMetricClick(`${t('base_corner_pressure')}`, 'basePressure', 'kPa', t('base_corner_pressure'))} />}
+            <MetricCard title={t('membrane_health')} value={t(data.membraneHealth.status === StatusLevel.Ok ? 'normal' : 'defect_detected')} unit="" status={data.membraneHealth.status} icon={<Icons.MembraneIcon />} />
+            <MetricCard title={t('fan_speed')} value={data.fanSpeed.value?.toFixed(0) ?? 'N/A'} unit="RPM" status={data.fanSpeed.status} icon={<Icons.FanIcon />} onClick={() => handleMetricClick(`${t('fan_speed')}`, 'fanSpeed', 'RPM', t('fan_speed'))} />
+        </MetricGroup>)}
+
+        { (data.internalTemperature.value !== 0 || data.externalTemperature.value !== 0 || data.internalHumidity.value !== 0 || data.externalHumidity.value !== 0 || data.externalWindSpeed.value !== 0) && (
+        <MetricGroup title={metricGroupTitles.environment} isOpen={openSections[metricGroupTitles.environment]} onToggle={() => toggleSection(metricGroupTitles.environment)}>
+            <PairedMetricCard title={`${t('temperature')}`} icon={<Icons.TempIcon />} 
+                internalUnit="°C"
+                externalUnit="°C"
+                internalData={{ value: data.internalTemperature.value?.toFixed(1) ?? 'N/A', status: data.internalTemperature.status }}
+                externalData={{ value: data.externalTemperature.value?.toFixed(1) ?? 'N/A', status: data.externalTemperature.status }}
+                internalLabel={t('internal')}
+                externalLabel={t('external')}
+                onClick={() => handlePairedMetricClick(`${t('temperature')}`, 'internalTemperature', 'externalTemperature', '°C', '°C', t('internal'), t('external'))}
+            />
+            <PairedMetricCard title={`${t('humidity')}`} icon={<Icons.HumidityIcon />} 
+                internalUnit="%RH"
+                externalUnit="%RH"
+                internalData={{ value: data.internalHumidity.value?.toFixed(0) ?? 'N/A', status: data.internalHumidity.status }}
+                externalData={{ value: data.externalHumidity.value?.toFixed(0) ?? 'N/A', status: data.externalHumidity.status }}
+                internalLabel={t('internal')}
+                externalLabel={t('external')}
+                onClick={() => handlePairedMetricClick(`${t('humidity')}`, 'internalHumidity', 'externalHumidity', '%RH', '%RH', t('internal'), t('external'))}
+            />
+            <MetricCard title={t('external_wind_speed')} value={data.externalWindSpeed.value?.toFixed(1) ?? 'N/A'} unit="m/s" status={data.externalWindSpeed.status} icon={<Icons.WindIcon />} onClick={() => handleMetricClick(`${t('external_wind_speed')}`, 'externalWindSpeed', 'm/s', t('external_wind_speed'))} />
+        </MetricGroup>)}
+
+        { (data.internalPM25.value !== 0 || data.externalPM25.value !== 0 || data.internalCO2.value !== 0 || data.externalCO2.value !== 0 || data.internalO2.value !== 0 || data.externalO2.value !== 0 || data.internalCO.value !== 0 || data.externalCO.value !== 0 || data.airExchangeRate.value !== 0) && (
+        <MetricGroup title={metricGroupTitles.air_quality} isOpen={openSections[metricGroupTitles.air_quality]} onToggle={() => toggleSection(metricGroupTitles.air_quality)}>
+            <PairedMetricCard title={`${t('pm25')}`} icon={<Icons.PM25Icon />} 
+                internalUnit="µg/m³"
+                externalUnit="µg/m³"
+                internalData={{ value: data.internalPM25.value?.toFixed(1) ?? 'N/A', status: data.internalPM25.status }}
+                externalData={{ value: data.externalPM25.value?.toFixed(1) ?? 'N/A', status: data.externalPM25.status }}
+                internalLabel={t('internal')}
+                externalLabel={t('external')}
+                onClick={() => handlePairedMetricClick(`${t('pm25')}`, 'internalPM25', 'externalPM25', 'µg/m³', 'µg/m³', t('internal'), t('external'))}
+            />
+            <PairedMetricCard title={`${t('co2')}`} icon={<Icons.CO2Icon />} 
+                internalUnit="ppm"
+                externalUnit="ppm"
+                internalData={{ value: data.internalCO2.value?.toFixed(0) ?? 'N/A', status: data.internalCO2.status }}
+                externalData={{ value: data.externalCO2.value?.toFixed(0) ?? 'N/A', status: data.externalCO2.status }}
+                internalLabel={t('internal')}
+                externalLabel={t('external')}
+                onClick={() => handlePairedMetricClick(`${t('co2')}`, 'internalCO2', 'externalCO2', 'ppm', 'ppm', t('internal'), t('external'))}
+            />
+            <PairedMetricCard title={`${t('o2')}`} icon={<Icons.O2Icon />} 
+                internalUnit="%"
+                externalUnit="%"
+                internalData={{ value: data.internalO2.value?.toFixed(1) ?? 'N/A', status: data.internalO2.status }}
+                externalData={{ value: data.externalO2.value?.toFixed(1) ?? 'N/A', status: data.externalO2.status }}
+                internalLabel={t('internal')}
+                externalLabel={t('external')}
+                onClick={() => handlePairedMetricClick(`${t('o2')}`, 'internalO2', 'externalO2', '%', '%', t('internal'), t('external'))}
+            />
+             <PairedMetricCard title={`${t('co')}`} icon={<Icons.COIcon />} 
+                internalUnit="ppm"
+                externalUnit="ppm"
+                internalData={{ value: data.internalCO.value?.toFixed(1) ?? 'N/A', status: data.internalCO.status }}
+                externalData={{ value: data.externalCO.value?.toFixed(1) ?? 'N/A', status: data.externalCO.status }}
+                internalLabel={t('internal')}
+                externalLabel={t('external')}
+                onClick={() => handlePairedMetricClick(`${t('co')}`, 'internalCO', 'externalCO', 'ppm', 'ppm', t('internal'), t('external'))}
+            />
+            <MetricCard title={t('air_exchange_rate')} value={data.airExchangeRate.value?.toFixed(0) ?? 'N/A'} unit="m³/h" status={data.airExchangeRate.status} icon={<Icons.AirExchangeIcon />} onClick={() => handleMetricClick(`${t('air_exchange_rate')} ${t('air_exchange_rate_tc') ? `(${t('air_exchange_rate_tc')})` : ''}`, 'airExchangeRate', 'm³/h', t('air_exchange_rate'))} />
+        </MetricGroup>)}
+        
+        { (data.internalNoise.value !== 0 || data.externalNoise.value !== 0 || data.internalLux.value !== 0) && (
+        <MetricGroup title={metricGroupTitles.systems_status} isOpen={openSections[metricGroupTitles.systems_status]} onToggle={() => toggleSection(metricGroupTitles.systems_status)}>
+            <PairedMetricCard title={`${t('noise')}`} icon={<Icons.NoiseIcon />} 
+                internalUnit="dB"
+                externalUnit="dB"
+                internalData={{ value: data.internalNoise.value?.toFixed(1) ?? 'N/A', status: data.internalNoise.status }}
+                externalData={{ value: data.externalNoise.value?.toFixed(1) ?? 'N/A', status: data.externalNoise.status }}
+                internalLabel={t('internal')}
+                externalLabel={t('external')}
+                onClick={() => handlePairedMetricClick(`${t('noise')}`, 'internalNoise', 'externalNoise', 'dB', 'dB', t('internal'), t('external'))}
+            />
+            <MetricCard title={t('internal_lux_level')} value={data.internalLux.value?.toFixed(0) ?? 'N/A'} unit="lux" status={data.internalLux.status} icon={<Icons.LuxIcon />} onClick={() => handleMetricClick(`${t('internal_lux_level')} ${t('internal_lux_level_tc') ? `(${t('internal_lux_level_tc')})` : ''}`, 'internalLux', 'lux', t('internal_lux_level'))} />
+            <MetricCard title={t('internal_lighting_status')} value={t(data.lightingStatus.value.toLowerCase())} unit="" status={data.lightingStatus.status} icon={<Icons.BulbIcon />} />
+            <MetricCard title={t('air_shutter_status')} value={t(data.airShutterStatus.value.toLowerCase())} unit="" status={data.airShutterStatus.status} icon={<Icons.ShutterIcon />} />
+        </MetricGroup>)}
+
+        { (data.powerConsumption.value !== 0 || data.voltage.value !== 0 || data.current.value !== 0) && (
+        <MetricGroup title={metricGroupTitles.power} isOpen={openSections[metricGroupTitles.power]} onToggle={() => toggleSection(metricGroupTitles.power)}>
+            {data.powerConsumption.value !== 0 && <MetricCard title={t('power_consumption')} value={data.powerConsumption.value?.toFixed(0) ?? 'N/A'} unit="W" status={data.powerConsumption.status} icon={<Icons.PowerIcon />} onClick={() => handleMetricClick(`${t('power_consumption')} ${t('power_consumption_tc') ? `(${t('power_consumption_tc')})` : ''}`, 'powerConsumption', 'W', t('power_consumption'))} />}
+            {data.voltage.value !== 0 && <MetricCard title={t('voltage')} value={data.voltage.value?.toFixed(0) ?? 'N/A'} unit="V" status={data.voltage.status} icon={<Icons.PowerIcon />} onClick={() => handleMetricClick(`${t('voltage')} ${t('voltage_tc') ? `(${t('voltage_tc')})` : ''}`, 'voltage', 'V', t('voltage'))} />}
+            {data.current.value !== 0 && <MetricCard title={t('current')} value={data.current.value?.toFixed(1) ?? 'N/A'} unit="A" status={data.current.status} icon={<Icons.PowerIcon />} onClick={() => handleMetricClick(`${t('current')} ${t('current_tc') ? `(${t('current_tc')})` : ''}`, 'current', 'A', t('current'))} />}
+        </MetricGroup>)}
+      </div>
+
+        <AIAnalysisModal 
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            analysisText={analysis}
+            isLoading={isLoadingAnalysis}
+        />
+        <ChartModal 
+            content={chartModalContent}
+            onClose={() => setChartModalContent(null)}
+            authenticatedFetch={authenticatedFetch}
+            site={selectedSite}
+            currentData={data}
+        />
+
       {/* New Dome Metrics Section */}
       {domeMetricsStructure.length > 0 && (
         <div className="space-y-6 mt-8">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-brand-text">{t('new_dome_metrics')}</h2>
-            {lastUpdated && (
-            <p className="text-sm text-gray-500 dark:text-brand-text-dim">
-              Last Updated: {new Date(lastUpdated).toLocaleString(language)}
-            </p>
-            )} 
           </div>
-
           {domeMetricsStructure.map(section => {
             const title = language === 'zh' ? t(section.section_name_tc || section.section_name) : t(section.section_name);
             return (
@@ -369,14 +491,6 @@ export const Dashboard: React.FC = () => {
           })}
         </div>
       )}
-
-      <ChartModal 
-        content={chartModalContent} 
-        onClose={() => setChartModalContent(null)} 
-        authenticatedFetch={authenticatedFetch}
-        site={selectedSite}
-        currentData={data}
-      />
     </div>
   );
 };

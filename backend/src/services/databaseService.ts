@@ -2,6 +2,7 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 
+// const DB_FILE = process.env.DATABASE_URL; 
 const DB_FILE = path.resolve(__dirname, '../../air_dome.db');
 const INIT_SQL_FILE = path.resolve(__dirname, '../config/init.sql');
 

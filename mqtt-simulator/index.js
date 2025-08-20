@@ -2,7 +2,10 @@ require('dotenv').config();
 const mqtt = require('mqtt');
 
 const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL || 'mqtt://localhost:1883';
-const client = mqtt.connect(MQTT_BROKER_URL);
+const client = mqtt.connect(MQTT_BROKER_URL, {
+    username: process.env.MQTT_USERNAME,
+    password: process.env.MQTT_PASSWORD,
+});
 
 const metrics = [
     { device_param: 'sensor-1', mqtt_param: 'internalPressure', min: 990, max: 1010 },
