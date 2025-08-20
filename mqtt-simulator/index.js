@@ -20,8 +20,18 @@ client.on('connect', () => {
     setInterval(() => {
         const metric = metrics[Math.floor(Math.random() * metrics.length)];
         const value = Math.random() * (metric.max - metric.min) + metric.min;
-        const topic = `air-dome/data/${metric.device_param}/${metric.mqtt_param}`;
-        const message = JSON.stringify({ value: value, timestamp: new Date().toISOString() });
+        
+        const topic = 'air-dome/data'; // All data goes to one topic
+        
+        // New payload format
+        const messagePayload = {
+            timestamp: new Date().toISOString(),
+            sensor_id: metric.device_param, // Use 'sensor_id' as the key, per user request
+        };
+        // Add the actual metric key-value pair
+        messagePayload[metric.mqtt_param] = parseFloat(value.toFixed(2));
+
+        const message = JSON.stringify(messagePayload);
 
         client.publish(topic, message, (err) => {
             if (err) {

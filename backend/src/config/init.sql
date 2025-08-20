@@ -9,14 +9,15 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS metrics (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  mqtt_param TEXT NOT NULL,
-  device_param TEXT NOT NULL,
+  topic TEXT,
+  device_param TEXT,            -- The key for the device ID in the payload (e.g., 'deviceID')
+  device_id TEXT,               -- The value of the device ID in the payload (e.g., 'external-sensor')
+  mqtt_param TEXT NOT NULL,     -- The key for the metric value in the payload (e.g., 'temperature')
   display_name TEXT NOT NULL,
   display_name_tc TEXT,
-  device_id TEXT NOT NULL,
   icon TEXT,
   unit TEXT,
-  UNIQUE (mqtt_param, device_param)
+  UNIQUE (topic, device_id, mqtt_param)
 );
 
 CREATE TABLE IF NOT EXISTS metric_groups (
@@ -93,11 +94,13 @@ SELECT 'admin', '$2b$10$wydOzraZ12j.hmkQnTeumOKGxj2eR/I3zjN2JSL0sxDqdiFIfP1WS', 
 WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
 
 -- Metrics Seed Data --
-INSERT INTO metrics (mqtt_param, device_param, display_name, display_name_tc, device_id, unit, icon) SELECT 'internalPressure', 'sensor-1', 'Internal Pressure', '內部壓力', 'sensor-1', 'Pa', 'PressureIcon' WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE mqtt_param = 'internalPressure' AND device_param = 'sensor-1');
-INSERT INTO metrics (mqtt_param, device_param, display_name, display_name_tc, device_id, unit, icon) SELECT 'externalPressure', 'sensor-2', 'External Pressure', '外部壓力', 'sensor-2', 'Pa', 'PressureIcon' WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE mqtt_param = 'externalPressure' AND device_param = 'sensor-2');
-INSERT INTO metrics (mqtt_param, device_param, display_name, display_name_tc, device_id, unit, icon) SELECT 'internalTemperature', 'sensor-3', 'Internal Temperature', '內部溫度', 'sensor-3', '°C', 'TempIcon' WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE mqtt_param = 'internalTemperature' AND device_param = 'sensor-3');
-INSERT INTO metrics (mqtt_param, device_param, display_name, display_name_tc, device_id, unit, icon) SELECT 'externalTemperature', 'sensor-4', 'External Temperature', '外部溫度', 'sensor-4', '°C', 'TempIcon' WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE mqtt_param = 'externalTemperature' AND device_param = 'sensor-4');
-INSERT INTO metrics (mqtt_param, device_param, display_name, display_name_tc, device_id, unit, icon) SELECT 'fanSpeed', 'sensor-21', 'Fan Speed', '風扇速度', 'sensor-21', 'RPM', 'FanIcon' WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE mqtt_param = 'fanSpeed' AND device_param = 'sensor-21');
+-- These rules are for the mqtt-simulator, which sends data to the 'air-dome/data' topic
+-- and uses the 'sensor_id' key in the payload to identify the device.
+INSERT INTO metrics (topic, device_param, device_id, mqtt_param, display_name, display_name_tc, unit, icon) SELECT 'air-dome/data', 'sensor_id', 'sensor-1', 'internalPressure', 'Internal Pressure', '內部壓力', 'Pa', 'PressureIcon' WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE device_id = 'sensor-1' AND mqtt_param = 'internalPressure');
+INSERT INTO metrics (topic, device_param, device_id, mqtt_param, display_name, display_name_tc, unit, icon) SELECT 'air-dome/data', 'sensor_id', 'sensor-2', 'externalPressure', 'External Pressure', '外部壓力', 'Pa', 'PressureIcon' WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE device_id = 'sensor-2' AND mqtt_param = 'externalPressure');
+INSERT INTO metrics (topic, device_param, device_id, mqtt_param, display_name, display_name_tc, unit, icon) SELECT 'air-dome/data', 'sensor_id', 'sensor-3', 'internalTemperature', 'Internal Temperature', '內部溫度', '°C', 'TempIcon' WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE device_id = 'sensor-3' AND mqtt_param = 'internalTemperature');
+INSERT INTO metrics (topic, device_param, device_id, mqtt_param, display_name, display_name_tc, unit, icon) SELECT 'air-dome/data', 'sensor_id', 'sensor-4', 'externalTemperature', 'External Temperature', '外部溫度', '°C', 'TempIcon' WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE device_id = 'sensor-4' AND mqtt_param = 'externalTemperature');
+INSERT INTO metrics (topic, device_param, device_id, mqtt_param, display_name, display_name_tc, unit, icon) SELECT 'air-dome/data', 'sensor_id', 'sensor-21', 'fanSpeed', 'Fan Speed', '風扇速度', 'RPM', 'FanIcon' WHERE NOT EXISTS (SELECT 1 FROM metrics WHERE device_id = 'sensor-21' AND mqtt_param = 'fanSpeed');
 
 -- Metric Groups Seed Data --
 INSERT INTO metric_groups (name, name_tc, icon, metric1_id, metric2_id) SELECT 'Group Pressure', '壓力', 'PressureIcon', 1, 2 WHERE NOT EXISTS (SELECT 1 FROM metric_groups WHERE name = 'Group Pressure');

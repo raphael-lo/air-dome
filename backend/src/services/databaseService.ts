@@ -2,9 +2,17 @@ import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-// const DB_FILE = process.env.DATABASE_URL; 
-const DB_FILE = path.resolve(__dirname, '../../air_dome.db');
-const INIT_SQL_FILE = path.resolve(__dirname, '../config/init.sql');
+const DB_FILE = process.env.DATABASE_URL;
+
+if (!DB_FILE) {
+  throw new Error('DATABASE_URL environment variable is not set.');
+}
+
+// Ensure the directory for the DB file exists
+const dbDir = path.dirname(DB_FILE);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
 
 const db = new sqlite3.Database(DB_FILE, (err) => {
   if (err) {
@@ -12,13 +20,7 @@ const db = new sqlite3.Database(DB_FILE, (err) => {
   }
 });
 
-export const initializeDatabase = () => {
-  const initSql = fs.readFileSync(INIT_SQL_FILE, 'utf-8');
-  db.exec(initSql, (err) => {
-    if (err) {
-      console.error('Error initializing database', err.message);
-    }
-  });
-};
+// The initialization logic has been moved to init_db.ts to resolve a startup race condition.
+// This file is now only responsible for creating and exporting the db connection object.
 
 export default db;

@@ -26,7 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
   const emergencyNavItem = filteredNavItems.find(item => item.id === 'emergency');
 
   return (
-    <div className="flex flex-col items-center w-20 bg-white dark:bg-brand-dark border-r border-gray-200 dark:border-brand-dark-lightest p-4">
+    <div className="flex flex-col items-center w-20 bg-white dark:bg-brand-dark border-r border-gray-200 dark:border-brand-dark-lightest p-4 z-30">
       <div className="flex-shrink-0 text-brand-accent">
         <DomeIcon className="h-10 w-10" />
       </div>

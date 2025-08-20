@@ -1,41 +1,85 @@
+import db from '../services/databaseService';
+import { Metric } from '../types';
+
+export const getMetrics = (): Promise<Metric[]> => {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM metrics', [], (err, rows) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows as Metric[]);
+      }
+    });
+  });
+};
+
+export const createMetric = (metric: Metric): Promise<Metric> => {
+  const { topic, device_param, device_id, mqtt_param, display_name, display_name_tc, icon, unit } = metric;
+  const sql = `INSERT INTO metrics (topic, device_param, device_id, mqtt_param, display_name, display_name_tc, icon, unit)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+  return new Promise((resolve, reject) => {
+    db.run(sql, [topic, device_param, device_id, mqtt_param, display_name, display_name_tc, icon, unit], function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        db.get('SELECT * FROM metrics WHERE id = ?', [this.lastID], (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row as Metric);
+          }
+        });
+      }
+    });
+  });
+};
+
+export const updateMetric = (id: number, metric: Metric): Promise<Metric> => {
+  const { topic, device_param, device_id, mqtt_param, display_name, display_name_tc, icon, unit } = metric;
+  const sql = `UPDATE metrics SET
+                 topic = ?,
+                 device_param = ?,
+                 device_id = ?,
+                 mqtt_param = ?,
+                 display_name = ?,
+                 display_name_tc = ?,
+                 icon = ?,
+                 unit = ?
+               WHERE id = ?`;
+  return new Promise((resolve, reject) => {
+    db.run(sql, [topic, device_param, device_id, mqtt_param, display_name, display_name_tc, icon, unit, id], function(err) {
+      if (err) {
+        reject(err);
+      } else {
+        db.get('SELECT * FROM metrics WHERE id = ?', [id], (err, row) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(row as Metric);
+          }
+        });
+      }
+    });
+  });
+};
+
+export const deleteMetric = (id: number): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    db.run('DELETE FROM metrics WHERE id = ?', [id], (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+};
+
+/*
+// The following functions are for a different feature and use a different database client.
+// Commenting them out to avoid errors until they can be properly refactored.
+
 import { Pool } from 'pg';
-
-export interface Metric {
-    id: number;
-    mqtt_param: string;
-    display_name: string;
-    display_name_tc?: string; // Added
-    device_id: string;
-    icon: string; // Added
-    unit?: string; // Added
-}
-
-const pool = new Pool();
-
-export const getMetrics = async () => {
-    const res = await pool.query('SELECT * FROM metrics');
-    return res.rows;
-};
-
-export const createMetric = async (metric: { mqtt_param: string; display_name: string; device_id: string; }) => {
-    const res = await pool.query(
-        'INSERT INTO metrics (mqtt_param, display_name, device_id) VALUES ($1, $2, $3) RETURNING *',
-        [metric.mqtt_param, metric.display_name, metric.device_id]
-    );
-    return res.rows[0];
-};
-
-export const updateMetric = async (id: number, metric: { mqtt_param: string; display_name: string; device_id: string; }) => {
-    const res = await pool.query(
-        'UPDATE metrics SET mqtt_param = $1, display_name = $2, device_id = $3 WHERE id = $4 RETURNING *',
-        [metric.mqtt_param, metric.display_name, metric.device_id, id]
-    );
-    return res.rows[0];
-};
-
-export const deleteMetric = async (id: number) => {
-    await pool.query('DELETE FROM metrics WHERE id = $1', [id]);
-};
 
 export const getSections = async () => {
     const res = await pool.query('SELECT * FROM sections ORDER BY section_order');
@@ -63,3 +107,4 @@ export const updateSectionItems = async (sectionId: number, items: any[]) => {
     // For demonstration, this function doesn't actually do anything.
     return;
 };
+*/

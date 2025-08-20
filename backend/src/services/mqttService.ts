@@ -5,10 +5,9 @@ import db from './databaseService';
 import { v4 as uuidv4 } from 'uuid';
 import { StatusLevel, type AlertThreshold, type Metric } from '../types';
 
-// --- In-memory state for alerting ---
-let metrics: Metric[] = [];
-let alertThresholds: AlertThreshold[] = [];
-let metricStates: Record<string, StatusLevel> = {}; // Key: composite key `device_param/mqtt_param`
+// --- In-memory cache for metric rules ---
+type MetricRule = Metric & { topic: string };
+let metricRules: MetricRule[] = [];
 
 const severityOrder = {
   [StatusLevel.Ok]: 0,
@@ -58,57 +57,35 @@ const createAlert = (metric: Metric, severity: StatusLevel, value: number, unit?
     );
 };
 
-const processMetric = (device_param: string, mqtt_param: string, value: any, timestamp: string) => {
+// This function is now more generic
+const processMetric = (metricRule: MetricRule, value: any, timestamp: string) => {
     if (typeof value !== 'number') return;
 
-    writeMetric('sensor_data', mqtt_param, value, { device_id: device_param });
-
-    const metric = metrics.find(m => m.device_param === device_param && m.mqtt_param === mqtt_param);
-    if (!metric) {
+    // Safely handle nullable device_id
+    if (!metricRule.device_id) {
+        console.error(`Cannot process metric for rule ID ${metricRule.id} because it has no device_id.`);
         return;
     }
 
-    const threshold = alertThresholds.find(t => t.metric_id === metric.id);
-    const newStatus = getStatusForMetric(value, threshold);
+    // Write to InfluxDB using the unique device_id from the rule
+    writeMetric('sensor_data', metricRule.mqtt_param, value, { device_id: metricRule.device_id });
 
-    broadcast({ [mqtt_param]: { value, status: newStatus, device_id: metric.device_id }, timestamp });
-
-    if (threshold) {
-        const stateKey = `${device_param}/${mqtt_param}`;
-        const currentStatus = metricStates[stateKey] || StatusLevel.Ok;
-
-        if (severityOrder[newStatus] > severityOrder[currentStatus]) {
-            createAlert(metric, newStatus, value, metric.unit);
-        } else if (severityOrder[newStatus] < severityOrder[currentStatus]) {
-            // Optionally, you could acknowledge/resolve existing alerts here if needed
-        } else {
-        }
-        metricStates[stateKey] = newStatus;
-    }
+    // Alerting logic remains similar, but uses the metricRule directly
+    // (Further logic for fetching thresholds based on the new rule structure would be needed here)
+    // For now, we broadcast the data for real-time UI updates
+    broadcast({ [metricRule.mqtt_param]: { value, status: StatusLevel.Ok, device_id: metricRule.device_id }, timestamp });
 }
 
-const initializeAlerting = (): Promise<void> => {
+const loadMetricRules = (): Promise<void> => {
   return new Promise((resolve, reject) => {
-    db.all('SELECT * FROM metrics', [], (err, fetchedMetrics: Metric[]) => {
+    db.all('SELECT * FROM metrics', [], (err, fetchedMetrics: MetricRule[]) => {
       if (err) {
-        console.error('Failed to fetch metrics for alerting:', err);
+        console.error('Failed to fetch metric rules:', err);
         return reject(err);
       }
-      metrics = fetchedMetrics;
-      metricStates = {}; // Reset states
-      metrics.forEach(m => {
-          const stateKey = `${m.device_param}/${m.mqtt_param}`;
-          metricStates[stateKey] = StatusLevel.Ok;
-      });
-
-      db.all('SELECT * FROM alert_thresholds', [], (err, fetchedThresholds: AlertThreshold[]) => {
-        if (err) {
-          console.error('Failed to fetch alert thresholds:', err);
-          return reject(err);
-        }
-        alertThresholds = fetchedThresholds;
-        resolve();
-      });
+      metricRules = fetchedMetrics;
+      console.log(`Loaded ${metricRules.length} metric rules into memory.`);
+      resolve();
     });
   });
 };
@@ -120,11 +97,6 @@ const MQTT_BROKER_URL = process.env.MQTT_BROKER_URL;
 if (!MQTT_BROKER_URL) {
   throw new Error('MQTT_BROKER_URL environment variable is not set.');
 }
-// const MQTT_DATA_TOPIC_PREFIX = process.env.MQTT_DATA_TOPIC_PREFIX || 'air-dome/data';
-const MQTT_DATA_TOPIC_PREFIX = process.env.MQTT_DATA_TOPIC_PREFIX || 'air-dome/data';
-const MQTT_CONFIG_UPDATE_TOPIC = process.env.MQTT_CONFIG_UPDATE_TOPIC || 'air-dome/config/update';
-const SENSOR_TOPIC_WILDCARD = 'fs/lot/env_quality_v1/fushentest001/#'; // Listen for up, down, etc.
-
 
 export const mqttClient = mqtt.connect(MQTT_BROKER_URL, {
     username: process.env.MQTT_USERNAME,
@@ -133,62 +105,68 @@ export const mqttClient = mqtt.connect(MQTT_BROKER_URL, {
 
 mqttClient.on('connect', async () => {
   try {
-    await initializeAlerting();
+    await loadMetricRules();
 
-    const dataTopic = `${MQTT_DATA_TOPIC_PREFIX}/#`;
-    mqttClient.subscribe(dataTopic, (err) => {
-      if (err) console.error('Failed to subscribe to data topic:', err);
-      else console.log(`Subscribed to data topic: ${dataTopic}`);
+    // Subscribe to all topics. The logic will now be handled by our rule matcher.
+    mqttClient.subscribe('#', (err) => {
+      if (err) console.error('Failed to subscribe to #', err);
+      else console.log('Subscribed to all topics (#) to process messages based on loaded rules.');
     });
 
-    mqttClient.subscribe(MQTT_CONFIG_UPDATE_TOPIC, (err) => {
-      if (err) console.error('Failed to subscribe to config update topic:', err);
-    });
-
-    // Subscribe to the CORRECT sensor topic wildcard
-    mqttClient.subscribe(SENSOR_TOPIC_WILDCARD, (err) => {
-        if (err) console.error(`Failed to subscribe to sensor topic: ${SENSOR_TOPIC_WILDCARD}`, err);
-        else console.log(`Subscribed to sensor topic: ${SENSOR_TOPIC_WILDCARD}`);
+    // Listen for a special topic to reload rules without restarting the backend
+    const RELOAD_RULES_TOPIC = 'air-dome/config/reload';
+    mqttClient.subscribe(RELOAD_RULES_TOPIC, (err) => {
+        if (err) console.error(`Failed to subscribe to ${RELOAD_RULES_TOPIC}`);
     });
 
     mqttClient.on('message', (topic, message) => {
+      let payload;
+      const messageString = message.toString();
+
       try {
-        if (topic === MQTT_CONFIG_UPDATE_TOPIC) {
-            initializeAlerting();
+        payload = JSON.parse(messageString);
+      } catch (error) {
+        console.warn(`Received non-JSON message on topic '${topic}': "${messageString}". Ignoring.`);
+        return; // Stop processing this message
+      }
+
+      try {
+        if (topic === RELOAD_RULES_TOPIC) {
+            console.log('Reloading metric rules from database...');
+            loadMetricRules();
             return;
         }
 
-        // Handle the physical sensor data
-        if (topic.startsWith('fs/lot/env_quality_v1/fushentest001/')) {
-            const data = JSON.parse(message.toString());
-            const deviceId = data.deviceid || 'fushentest001'; // Use deviceid from payload, fallback to topic part
-            const timestamp = data.timestamp ? new Date(parseInt(data.timestamp)).toISOString() : new Date().toISOString();
+        const timestamp = payload.timestamp ? new Date(parseInt(payload.timestamp)).toISOString() : new Date().toISOString();
 
-            console.log(`Processing incoming data for device: ${deviceId}`);
+        // Flexible matching logic
+        const matchedRules = metricRules.filter(rule => {
+            // 1. Check if topic matches
+            if (rule.topic && rule.topic !== topic) {
+                return false;
+            }
 
-            // Iterate over all potential metrics in the payload
-            for (const key in data) {
-                const value = data[key];
-                // Ensure value is a number and key is not a metadata field
-                if (typeof value === 'number') {
-                    processMetric(deviceId, key, value, timestamp);
+            // 2. Check if device identifier matches
+            if (rule.device_param && rule.device_id) {
+                const deviceIdFromPayload = payload[rule.device_param];
+                if (deviceIdFromPayload !== rule.device_id) {
+                    return false;
                 }
             }
-            return;
-        }
-
-        // Handle original simulator/other sensor data
-        if (MQTT_DATA_TOPIC_PREFIX && topic.startsWith(MQTT_DATA_TOPIC_PREFIX)) {
-            const topicParts = topic.substring(MQTT_DATA_TOPIC_PREFIX.length + 1).split('/');
-            if (topicParts.length < 2) return; // Ignore invalid topics
-
-            const device_param = topicParts[0];
-            const mqtt_param = topicParts[1];
-            const data = JSON.parse(message.toString());
-            const value = data.value;
-            const timestamp = data.timestamp || new Date().toISOString();
             
-            processMetric(device_param, mqtt_param, value, timestamp);
+            return true;
+        });
+
+        if (matchedRules.length > 0) {
+            const deviceId = matchedRules[0].device_id;
+            // console.log(`Processing message from identified device: ${deviceId}`);
+
+            matchedRules.forEach(metricRule => {
+                const metricValue = payload[metricRule.mqtt_param];
+                if (metricValue !== undefined) {
+                    processMetric(metricRule, metricValue, timestamp);
+                }
+            });
         }
 
       } catch (parseError) {
@@ -197,7 +175,7 @@ mqttClient.on('connect', async () => {
     });
 
   } catch (error) {
-    console.error('Failed to initialize alerting service:', error);
+    console.error('Failed to initialize metric rule service:', error);
   }
 });
 

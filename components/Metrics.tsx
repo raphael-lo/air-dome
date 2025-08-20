@@ -91,35 +91,32 @@ const MetricsView: React.FC = () => {
                 <table className="w-full text-left">
                     <thead>
                         <tr className="border-b border-gray-200 dark:border-brand-dark-lightest">
-                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Icon</th>
-                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">MQTT Param</th>
                             <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Display Name</th>
                             <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Display Name (TC)</th>
-                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Device ID</th>
-                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Device Param</th>
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Topic</th>
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Device ID Key (device_param)</th>
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Device ID Value (device_id)</th>
+                            <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Metric Key (mqtt_param)</th>
                             <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim">Unit</th>
                             <th className="p-3 text-sm font-semibold text-gray-500 dark:text-brand-text-dim text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {metrics.map(metric => {
-                            const IconComponent = metric.icon ? MetricIcons[metric.icon as keyof typeof MetricIcons] : null;
-                            return (
-                                <tr key={metric.id} className="border-b border-gray-200 dark:border-brand-dark-lightest hover:bg-gray-50 dark:hover:bg-brand-dark transition-colors">
-                                    <td className="p-3">{IconComponent && <IconComponent className="h-6 w-6" />}</td>
-                                    <td className="p-3 font-medium text-gray-800 dark:text-brand-text">{metric.mqtt_param}</td>
-                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric.display_name}</td>
-                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric.display_name_tc}</td>
-                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric.device_id}</td>
-                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric.device_param}</td>
-                                    <td className="p-3 text-gray-800 dark:text-brand-text">{metric.unit}</td>
-                                    <td className="p-3 text-center">
-                                        <button onClick={() => handleOpenModal(metric)} className="text-blue-500 hover:underline">Edit</button>
-                                        <button onClick={() => handleDelete(metric.id!)} className="text-red-500 hover:underline ml-4">Delete</button>
-                                    </td>
-                                </tr>
-                            )
-                        })}
+                        {metrics.map(metric => (
+                            <tr key={metric.id} className="border-b border-gray-200 dark:border-brand-dark-lightest hover:bg-gray-50 dark:hover:bg-brand-dark transition-colors">
+                                <td className="p-3 font-medium text-gray-800 dark:text-brand-text">{metric.display_name}</td>
+                                <td className="p-3 text-gray-800 dark:text-brand-text">{metric.display_name_tc}</td>
+                                <td className="p-3 text-gray-800 dark:text-brand-text">{metric.topic}</td>
+                                <td className="p-3 text-gray-800 dark:text-brand-text">{metric.device_param}</td>
+                                <td className="p-3 text-gray-800 dark:text-brand-text">{metric.device_id}</td>
+                                <td className="p-3 text-gray-800 dark:text-brand-text">{metric.mqtt_param}</td>
+                                <td className="p-3 text-gray-800 dark:text-brand-text">{metric.unit}</td>
+                                <td className="p-3 text-center">
+                                    <button onClick={() => handleOpenModal(metric)} className="text-blue-500 hover:underline">Edit</button>
+                                    <button onClick={() => handleDelete(metric.id!)} className="text-red-500 hover:underline ml-4">Delete</button>
+                                </td>
+                            </tr>
+                        ))}
                     </tbody>
                 </table>
             </div>

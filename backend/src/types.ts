@@ -90,13 +90,14 @@ export interface User {
 
 export interface Metric {
   id?: number;
-  mqtt_param: string;
-  device_param: string;
+  topic?: string | null;
+  device_param?: string | null;      // The key for the device ID in the payload (e.g., 'deviceID')
+  device_id?: string | null;          // The value of the device ID (e.g., 'external-sensor')
+  mqtt_param: string;               // The key for the metric value in the payload (e.g., 'temperature')
   display_name: string;
   display_name_tc?: string;
-  device_id: string;
-  icon: string;
-  unit?: string;
+  icon?: string | null;
+  unit?: string | null;
   itemId?: number;
   section_item_id?: number;
 }
