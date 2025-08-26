@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { View } from '../backend/src/types';
 import { useAppContext } from '../context/AppContext';
@@ -81,6 +80,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, setCurrentView })
            </button>
         </div>
       </nav>
+      <div className="mt-auto">
+        <img src="https://yotatech.com.hk/wp-content/uploads/2024/11/cropped-logo5.png" alt="Yota Tech Logo" className="h-8 w-auto" />
+      </div>
     </div>
   );
 };

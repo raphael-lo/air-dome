@@ -20,6 +20,7 @@ export const getSections = async (req: Request, res: Response) => {
 };
 
 export const updateSection = async (req: Request, res: Response) => {
+    console.log("1");
     try {
         const section = await sectionModel.updateSection(Number(req.params.id), req.body);
         res.json(section);

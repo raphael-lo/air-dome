@@ -13,21 +13,21 @@ export const Header: React.FC<HeaderProps> = ({ currentView }) => {
 
   return (
     <header className="flex-shrink-0 bg-white dark:bg-brand-dark border-b border-gray-200 dark:border-brand-dark-lightest px-4 sm:px-6 lg:px-8">
-      <div className="flex items-center justify-between h-16">
+      <div className="flex items-center justify-between h-auto min-h-[4rem] flex-col sm:flex-row py-2 sm:py-0">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-brand-text">{t(selectedSite.nameKey)} - {t(currentView)}</h1>
+          <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-brand-text text-center sm:text-left">{t(selectedSite.nameKey)} - {t(currentView)}</h1>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-4 mt-2 sm:mt-0">
           {/* Site Selector */}
-          <div className="relative">
-             <SiteIcon className="hidden absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-brand-text-dim" />
+          <div className="relative hidden">
+             <SiteIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-brand-text-dim" />
              <select
                 value={selectedSite.id}
                 onChange={(e) => {
                   const newSite = sites.find(s => s.id === e.target.value);
                   if (newSite) setSelectedSite(newSite);
                 }}
-                className="hidden pl-10 pr-4 py-2 bg-gray-100 dark:bg-brand-dark-light border border-gray-300 dark:border-brand-dark-lightest rounded-md text-gray-900 dark:text-brand-text focus:ring-2 focus:ring-brand-accent focus:outline-none appearance-none"
+                className="pl-10 pr-4 py-2 bg-gray-100 dark:bg-brand-dark-light border border-gray-300 dark:border-brand-dark-lightest rounded-md text-gray-900 dark:text-brand-text focus:ring-2 focus:ring-brand-accent focus:outline-none appearance-none"
              >
                 {sites.map(site => (
                   <option key={site.id} value={site.id}>{t(site.nameKey)}</option>

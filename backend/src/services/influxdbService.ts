@@ -1,9 +1,9 @@
 import { InfluxDB, Point } from '@influxdata/influxdb-client';
 
 const url = process.env.INFLUXDB_URL || 'http://localhost:8086';
-const token = 'my-super-secret-token';
-const org = 'my-org';
-const bucket = 'my-bucket';
+const token = process.env.INFLUXDB_TOKEN || 'my-super-secret-token';
+const org = process.env.INFLUXDB_ORG || 'my-org';
+const bucket = process.env.INFLUXDB_BUCKET || 'my-bucket';
 
 const influxDB = new InfluxDB({ url, token });
 const writeApi = influxDB.getWriteApi(org, bucket);
@@ -116,24 +116,42 @@ const getRangeInSeconds = (range: string): number => {
   return 0; // Should not happen with valid ranges
 };
 
-export const queryHistoricalData = async (measurement: string, field: string, range: string = '-24h', maxPoints: number = 40) => {
-  const queryApi = influxDB.getQueryApi(org);
+export function queryHistoricalData(measurement: string, field: string, range?: string, maxPoints?: number): Promise<any[]>;
+export function queryHistoricalData(measurement: string, field: string, range: string, topic: string, device_id: string, maxPoints?: number): Promise<any[]>;
+export async function queryHistoricalData(measurement: string, field: string, range: string = '-24h', maxPointsOrTopic?: number | string, device_id?: string, maxPoints?: number): Promise<any[]> {
+    const queryApi = influxDB.getQueryApi(org);
 
-  const rangeSeconds = getRangeInSeconds(range);
-  let every = `${Math.max(1, Math.floor(rangeSeconds / maxPoints))}s`; // Ensure at least 1 minute interval
+    let topic: string | undefined;
+    let actualMaxPoints: number = 40;
 
-  // Adjust 'every' for very short ranges to avoid 0 or too small intervals
-  if (rangeSeconds < maxPoints) {
-    every = '1m'; // For ranges smaller than maxPoints, aggregate by 1 minute
-  }
+    if (typeof maxPointsOrTopic === 'string') {
+        topic = maxPointsOrTopic;
+        actualMaxPoints = maxPoints || 40;
+    } else if (typeof maxPointsOrTopic === 'number') {
+        actualMaxPoints = maxPointsOrTopic;
+    }
 
-  const query = `
+    const rangeSeconds = getRangeInSeconds(range);
+    let every = `${Math.max(1, Math.floor(rangeSeconds / actualMaxPoints))}s`;
+
+    if (rangeSeconds < actualMaxPoints) {
+        every = '1m';
+    }
+
+    let query = `
     from(bucket: "${bucket}")
     |> range(start: ${range})
-    |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}")
+    |> filter(fn: (r) => r._measurement == "${measurement}" and r._field == "${field}")`;
+
+    if (topic && device_id) {
+        query += `
+    |> filter(fn: (r) => r.topic == "${topic}" and r.device_id == "${device_id}")`;
+    }
+
+    query += `
     |> aggregateWindow(every: ${every}, fn: mean, createEmpty: true)
     |> yield(name: "mean")
   `;
-  const result = await queryApi.collectRows(query);
-  return result.map((row: any) => ({ _time: row._time, _value: row._value }));
-};
+    const result = await queryApi.collectRows(query);
+    return result.map((row: any) => ({ _time: row._time, _value: row._value }));
+}

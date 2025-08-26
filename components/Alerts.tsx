@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import type { Alert } from '../backend/src/types';
 import { useAppContext } from '../context/AppContext';
@@ -32,7 +31,8 @@ export const Alerts: React.FC = () => {
         await acknowledgeAlert(alertId, { authenticatedFetch });
         // Refetch alerts to get the updated status
         const updatedAlerts = await fetchAlerts(selectedSite.id, { authenticatedFetch });
-        setAlerts(updatedAlerts);
+        const sortedAlerts = updatedAlerts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setAlerts(sortedAlerts);
         setAcknowledgingId(null);
     };
 

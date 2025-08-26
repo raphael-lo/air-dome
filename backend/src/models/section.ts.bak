@@ -1,5 +1,4 @@
 import db from '../services/databaseService';
-import * as sqlite3 from 'sqlite3';
 
 export interface Section {
   id?: number;
@@ -26,7 +25,7 @@ export const getSections = () => {
           id: row.id,
           name: row.name,
           name_tc: row.name_tc,
-          item_order: row.item_order ?? 0, // Convert null to 0
+          item_order: row.item_order,
         }));
         resolve(sections);
       }
@@ -110,36 +109,15 @@ export const removeSectionItem = (id: number) => {
 export const updateSectionItemOrder = (items: SectionItem[]) => {
   return new Promise<void>((resolve, reject) => {
     db.serialize(() => {
-      db.run('BEGIN TRANSACTION', (err: Error | null) => {
-        if (err) return reject(err);
-
-        const stmt = db.prepare('UPDATE section_items SET item_order = ? WHERE id = ?');
-        let completed = 0;
-        const total = items.length;
-
-        if (total === 0) {
-          db.run('COMMIT', (err: Error | null) => {
-            if (err) { db.run('ROLLBACK'); return reject(err); }
-            resolve();
-          });
-          return;
-        }
-
-        for (const item of items) {
-          stmt.run(item.item_order, item.id, function(err: Error | null) {
-            if (err) {
-              db.run('ROLLBACK');
-              return reject(err);
-            }
-            completed++;
-            if (completed === total) {
-              stmt.finalize();
-              db.run('COMMIT', (err: Error | null) => {
-                if (err) { db.run('ROLLBACK'); return reject(err); }
-                resolve();
-              });
-            }
-          });
+      const stmt = db.prepare('UPDATE section_items SET item_order = ? WHERE id = ?');
+      for (const item of items) {
+        stmt.run(item.item_order, item.id);
+      }
+      stmt.finalize((err) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve();
         }
       });
     });
@@ -149,41 +127,18 @@ export const updateSectionItemOrder = (items: SectionItem[]) => {
 export const updateSectionOrder = (sections: { id: number, item_order: number }[]) => {
   return new Promise<void>((resolve, reject) => {
     db.serialize(() => {
-      db.run('BEGIN TRANSACTION', (err: Error | null) => {
+      const stmt = db.prepare('UPDATE sections SET item_order = ? WHERE id = ?');
+      db.run('BEGIN TRANSACTION');
+      for (const section of sections) {
+        stmt.run(section.item_order, section.id);
+      }
+      stmt.finalize();
+      db.run('COMMIT', (err) => {
         if (err) {
-          return reject(err);
-        }
-
-        const stmt = db.prepare('UPDATE sections SET item_order = ? WHERE id = ?');
-        let completed = 0;
-        const total = sections.length;
-
-        if (total === 0) {
-          db.run('COMMIT', (err: Error | null) => {
-            if (err) { db.run('ROLLBACK'); return reject(err); }
-            resolve();
-          });
-          return;
-        }
-
-        for (const section of sections) {
-          stmt.run(section.item_order, section.id, function(this: sqlite3.RunResult, err: Error | null) {
-            if (err) {
-              db.run('ROLLBACK');
-              return reject(err);
-            }
-            completed++;
-            if (completed === total) {
-              stmt.finalize();
-              db.run('COMMIT', (err: Error | null) => {
-                if (err) {
-                  db.run('ROLLBACK');
-                  return reject(err);
-                }
-                resolve();
-              });
-            }
-          });
+          db.run('ROLLBACK');
+          reject(err);
+        } else {
+          resolve();
         }
       });
     });

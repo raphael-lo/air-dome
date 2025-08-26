@@ -6,6 +6,11 @@ import { config } from '../config';
 const BASE_URL = config.apiBaseUrl;
 const WS_URL = config.wsUrl;
 
+// Helper function to create a unique key for a metric
+const createMetricKey = (metric: { topic?: string | null; device_id?: string | null; mqtt_param: string }) => {
+  return `${metric.topic || ''}:${metric.device_id || ''}:${metric.mqtt_param}`;
+};
+
 // This helper function is now only used for the initial data load.
 const getStatusForMetric = (value: number, threshold: AlertThreshold | undefined): StatusLevel => {
   if (!threshold) return StatusLevel.Ok;
@@ -56,14 +61,15 @@ export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestIn
       const fetchedThresholds: AlertThreshold[] = await thresholdsResponse.json();
       
       const thresholdsMap: Record<string, AlertThreshold> = {};
-      const metricIdToMqttParam: Record<number, string> = {};
+      const metricIdToMetric: Record<number, Metric> = {};
       metrics.forEach(m => {
-        if(m.id && m.mqtt_param) metricIdToMqttParam[m.id] = m.mqtt_param;
+        if(m.id) metricIdToMetric[m.id] = m;
       });
       fetchedThresholds.forEach(t => {
-        const mqttParam = metricIdToMqttParam[t.metric_id];
-        if (mqttParam) {
-          thresholdsMap[mqttParam] = t;
+        const metric = metricIdToMetric[t.metric_id];
+        if (metric) {
+          const key = createMetricKey(metric);
+          thresholdsMap[key] = t;
         }
       });
 
@@ -71,13 +77,15 @@ export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestIn
       const historyPromises = metrics.map(async (metric) => {
         if (!metric.mqtt_param) return null;
         try {
-          const response = await authenticatedFetch(`${BASE_URL}/sensor-data/history?measurement=sensor_data&field=${metric.mqtt_param}&range=-24h`);
+          const key = createMetricKey(metric);
+          const response = await authenticatedFetch(`${BASE_URL}/sensor-data/history?measurement=sensor_data&field=${key}&range=-24h`);
           if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
           const historyData = await response.json();
-          return { key: metric.mqtt_param, history: historyData };
+          return { key, history: historyData };
         } catch (error) {
           console.error(`Error fetching historical data for ${metric.mqtt_param}:`, error);
-          return { key: metric.mqtt_param, history: [] };
+          const key = createMetricKey(metric);
+          return { key, history: [] };
         }
       }).filter(p => p !== null);
 
@@ -87,7 +95,8 @@ export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestIn
       const initialData: DynamicAirDomeData = {};
       metrics.forEach(metric => {
         if (metric.mqtt_param) {
-            initialData[metric.mqtt_param] = { value: 'N/A', status: StatusLevel.Ok, history: [] };
+            const key = createMetricKey(metric);
+            initialData[key] = { value: null, status: StatusLevel.Ok, history: [] };
         }
       });
 
@@ -125,35 +134,30 @@ export const useAirDomeData = (site: Site, authenticatedFetch: (input: RequestIn
             setDataRef.current((prevData) => {
               if (!prevData) return null;
 
-              const updatedData = { ...prevData };
-              const maxPoints = 40;
+              const key = createMetricKey(newData);
+              const { value, status } = newData;
 
-              for (const key in newData) {
-                if (key === 'timestamp') continue;
-
-                const { value, status } = newData[key];
-                
-                // If the metric key doesn't exist on our state, create it dynamically
-                if (!updatedData[key]) {
-                    updatedData[key] = { value: 0, status: StatusLevel.Ok, history: [] };
-                }
-                
-                updatedData[key].value = value;
-                updatedData[key].status = status;
-
-                if (updatedData[key].history) {
-                    const newHistory = [...updatedData[key].history, { _time: new Date().toISOString(), _value: value }];
-                    if (newHistory.length > maxPoints) {
-                      newHistory.shift();
-                    }
-                    updatedData[key].history = newHistory;
-                }
+              const prevMetricData = prevData[key] || { value: 0, status: StatusLevel.Ok, history: [] };
+              const newHistory = [...prevMetricData.history, { _time: new Date().toISOString(), _value: value }];
+              if (newHistory.length > 40) {
+                newHistory.shift();
               }
 
+              const updatedData = {
+                ...prevData,
+                [key]: {
+                  ...prevMetricData,
+                  value,
+                  status,
+                  history: newHistory,
+                },
+              };
+              
               if (newData.timestamp) {
                 setLastUpdated(newData.timestamp);
                 updatedData.timestamp = newData.timestamp;
               }
+
               return updatedData;
             });
         }

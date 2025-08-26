@@ -44,6 +44,7 @@ const SortableItem: React.FC<{ id: any, children: React.ReactNode, handle?: bool
 
 const MetricsView: React.FC = () => {
     const { authenticatedFetch } = useAuth();
+    const { t } = useAppContext();
     const [metrics, setMetrics] = useState<Metric[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -83,8 +84,8 @@ const MetricsView: React.FC = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Metrics</h2>
-                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent text-white py-2 px-4 rounded-lg">Add Metric</button>
+                <h2 className="text-xl font-bold">{t('metrics')}</h2>
+                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent text-white py-2 px-4 rounded-lg">{t('add_metric')}</button>
             </div>
             {isLoading ? <div className="flex justify-center items-center"><SpinnerIcon className="h-8 w-8 animate-spin" /></div> : 
             <div className="overflow-x-auto bg-white dark:bg-brand-dark-light rounded-lg shadow">
@@ -135,6 +136,7 @@ const MetricsView: React.FC = () => {
 
 const MetricGroupsView: React.FC = () => {
     const { authenticatedFetch } = useAuth();
+    const { t } = useAppContext();
     const [metricGroups, setMetricGroups] = useState<MetricGroup[]>([]);
     const [metrics, setMetrics] = useState<Metric[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -179,8 +181,8 @@ const MetricGroupsView: React.FC = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Metric Groups</h2>
-                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent text-white py-2 px-4 rounded-lg">Add Group</button>
+                <h2 className="text-xl font-bold">{t('metric_groups')}</h2>
+                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent text-white py-2 px-4 rounded-lg">{t('add_group')}</button>
             </div>
             {isLoading ? <div className="flex justify-center items-center"><SpinnerIcon className="h-8 w-8 animate-spin" /></div> : 
             <div className="overflow-x-auto bg-white dark:bg-brand-dark-light rounded-lg shadow">
@@ -223,7 +225,7 @@ const MetricGroupsView: React.FC = () => {
 };
 
 const SectionsView: React.FC = () => {
-    const { authenticatedFetch } = useAuth();
+    const { authenticatedFetch, user } = useAuth();
     const { t } = useAppContext();
     const [sections, setSections] = useState<SectionWithItems[]>([]);
     const [allMetrics, setAllMetrics] = useState<Metric[]>([]);
@@ -308,8 +310,8 @@ const SectionsView: React.FC = () => {
     return (
         <div>
             <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold">Sections</h2>
-                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent text-white py-2 px-4 rounded-lg">Add Section</button>
+                <h2 className="text-xl font-bold">{t('sections')}</h2>
+                <button onClick={() => handleOpenModal(null)} className="bg-brand-accent text-white py-2 px-4 rounded-lg">{t('add_section')}</button>
             </div>
             {isLoading ? <div className="flex justify-center items-center"><SpinnerIcon className="h-8 w-8 animate-spin" /></div> : 
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -365,19 +367,20 @@ const SectionsView: React.FC = () => {
 
 // --- Main Component ---
 export const Metrics: React.FC = () => {
+    const { t } = useAppContext();
     const [activeTab, setActiveTab] = useState('metrics');
 
     return (
         <div className="p-4 sm:p-6 lg:p-8">
             <div className="flex border-b border-gray-200 dark:border-brand-dark-lightest mb-4">
                 <button onClick={() => setActiveTab('metrics')} className={`py-2 px-4 text-sm font-medium ${activeTab === 'metrics' ? 'text-brand-accent border-b-2 border-brand-accent' : 'text-gray-500 hover:text-gray-700'}`}>
-                    Metrics
+                    {t('metrics')}
                 </button>
                 <button onClick={() => setActiveTab('groups')} className={`py-2 px-4 text-sm font-medium ${activeTab === 'groups' ? 'text-brand-accent border-b-2 border-brand-accent' : 'text-gray-500 hover:text-gray-700'}`}>
-                    Metric Groups
+                    {t('metric_groups')}
                 </button>
                 <button onClick={() => setActiveTab('sections')} className={`py-2 px-4 text-sm font-medium ${activeTab === 'sections' ? 'text-brand-accent border-b-2 border-brand-accent' : 'text-gray-500 hover:text-gray-700'}`}>
-                    Sections
+                    {t('sections')}
                 </button>
             </div>
             <div>

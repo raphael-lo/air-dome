@@ -4,7 +4,7 @@ import { useAppContext } from '../context/AppContext';
 import { useAirDomeData } from '../hooks/useAirDomeData';
 import { MetricCard } from './MetricCard';
 import { PairedMetricCard } from './PairedMetricCard';
-import { StatusLevel, type Alert, type Site, type AirDomeData, type DomeSection } from '../backend/src/types';
+import { StatusLevel, type Alert, type Site, type AirDomeData, type DomeSection, type Metric } from '../backend/src/types';
 import * as Icons from './icons/MetricIcons';
 import { AlertIcon } from './icons/NavIcons';
 import { analyzeDomeDataStream, fetchAlerts } from '../services/geminiService';
@@ -12,6 +12,12 @@ import { SeverityBadge } from './SeverityBadge';
 import { MetricChart } from './MetricChart';
 import { MetricGroup } from './MetricGroup';
 import { SpinnerIcon } from './icons/MetricIcons';
+import { BrokerStatusCard } from './BrokerStatusCard'; // Add this line
+
+// Helper function to create a unique key for a metric
+const createMetricKey = (metric: { topic?: string | null; device_id?: string | null; mqtt_param: string }) => {
+  return `${metric.topic || ''}:${metric.device_id || ''}:${metric.mqtt_param}`;
+};
 
 const AIAnalysisModal: React.FC<{ isOpen: boolean; onClose: () => void; analysisText: string; isLoading: boolean }> = ({ isOpen, onClose, analysisText, isLoading }) => {
   const { t } = useAppContext();
@@ -82,7 +88,7 @@ const ChartModal: React.FC<{ content: ChartModalContent | null; onClose: () => v
 
 export const Dashboard: React.FC = () => {
   const { selectedSite, t, language } = useAppContext();
-  const { authenticatedFetch } = useAuth();
+  const { authenticatedFetch, user } = useAuth(); // Add user here
   const { data, isLoading: isLoadingData, lastUpdated } = useAirDomeData(selectedSite, authenticatedFetch, (message) => {
     if (message.type === 'new_alert') {
       setActiveAlerts(prevAlerts => {
@@ -105,6 +111,13 @@ export const Dashboard: React.FC = () => {
   const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
   const [chartModalContent, setChartModalContent] = useState<ChartModalContent | null>(null);
   const [domeMetricsStructure, setDomeMetricsStructure] = useState<DomeSection[]>([]);
+
+  const formatMetricValue = (value: any) => {
+    if (typeof value === 'number') {
+      return value.toFixed(1);
+    }
+    return 'N/A';
+  };
 
   const loadAlerts = useCallback(async () => {
     const allAlerts = await fetchAlerts(selectedSite.id, { authenticatedFetch });
@@ -202,19 +215,22 @@ export const Dashboard: React.FC = () => {
     }
   };
   
-  const handleMetricClick = (title: string, field: string, unit: string, label?: string) => {
+  const handleMetricClick = (title: string, metric: Metric, unit: string, label?: string) => {
+    const field = createMetricKey(metric);
     setChartModalContent({ title, unit, internalField: field, internalLabel: label });
   };
 
   const handlePairedMetricClick = (
     title: string, 
-    internalField: string, 
-    externalField: string, 
+    internalMetric: Metric, 
+    externalMetric: Metric, 
     internalUnit: string, 
     externalUnit: string,
     internalLabel?: string,
     externalLabel?: string
   ) => {
+      const internalField = createMetricKey(internalMetric);
+      const externalField = createMetricKey(externalMetric);
       setChartModalContent({
         title,
         internalField,
@@ -269,7 +285,7 @@ export const Dashboard: React.FC = () => {
             <p className="text-sm text-gray-500 dark:text-brand-text-dim">
               Last Updated: {new Date(lastUpdated).toLocaleString(language)}
             </p>
-            )} 
+            ) }
           </div>
 
           {domeMetricsStructure.map(section => {
@@ -286,8 +302,10 @@ export const Dashboard: React.FC = () => {
                 if ('metrics' in item) { // It's a MetricGroup
                   if (item.metric1Data && item.metric2Data) {
                     // Render PairedMetricCard if both metric1Data and metric2Data are found
-                    const internalMetric = data?.[item.metric1Data.mqtt_param || ''];
-                    const externalMetric = data?.[item.metric2Data.mqtt_param || ''];
+                    const internalMetricKey = createMetricKey(item.metric1Data);
+                    const externalMetricKey = createMetricKey(item.metric2Data);
+                    const internalMetric = data?.[internalMetricKey];
+                    const externalMetric = data?.[externalMetricKey];
                     const internalLabel = language === 'zh' ? item.metric1_display_name_tc || item.metric1_display_name : item.metric1_display_name;
                     const externalLabel = language === 'zh' ? item.metric2_display_name_tc || item.metric2_display_name : item.metric2_display_name;
                     const internalUnit = item.metric1Data.unit || metricUnits[item.metric1Data.mqtt_param] || '';
@@ -301,19 +319,19 @@ export const Dashboard: React.FC = () => {
                         internalUnit={internalUnit}
                         externalUnit={externalUnit}
                         internalData={{
-                          value: internalMetric?.value?.toFixed(1) ?? 'N/A',
+                          value: formatMetricValue(internalMetric?.value),
                           status: internalMetric?.status ?? StatusLevel.Ok,
                         }}
                         externalData={{
-                          value: externalMetric?.value?.toFixed(1) ?? 'N/A',
+                          value: formatMetricValue(externalMetric?.value),
                           status: externalMetric?.status ?? StatusLevel.Ok,
                         }}
                         internalLabel={internalLabel}
                         externalLabel={externalLabel}
                         onClick={() => handlePairedMetricClick(
                             groupTitle,
-                            item.metric1Data.mqtt_param, 
-                            item.metric2Data.mqtt_param, 
+                            item.metric1Data, 
+                            item.metric2Data, 
                             internalUnit, 
                             externalUnit,
                             internalLabel,
@@ -332,15 +350,16 @@ export const Dashboard: React.FC = () => {
                       >
                         {item.metrics.map(metric => {
                           const metricTitle = language === 'zh' ? t(metric.display_name_tc || metric.display_name) : t(metric.display_name);
+                          const metricKey = createMetricKey(metric);
                           return (
                             <MetricCard
                               key={metric.metric_id}
                               title={metricTitle}
-                              value={data?.[metric.mqtt_param]?.value?.toFixed(1) ?? 'N/A'}
+                              value={formatMetricValue(data?.[metricKey]?.value)}
                               unit={metric.unit || metricUnits[metric.mqtt_param] || ''}
-                              status={data?.[metric.mqtt_param]?.status ?? StatusLevel.Ok}
+                              status={data?.[metricKey]?.status ?? StatusLevel.Ok}
                               icon={Icons[metric.icon as keyof typeof Icons] ? React.createElement(Icons[metric.icon as keyof typeof Icons]) : <Icons.PressureIcon />}
-                              onClick={() => handleMetricClick(metricTitle, metric.mqtt_param, metric.unit || '', metricTitle)}
+                              onClick={() => handleMetricClick(metricTitle, metric, metric.unit || '', metricTitle)}
                             />
                           );
                         })}
@@ -348,18 +367,19 @@ export const Dashboard: React.FC = () => {
                     );
                   }
                 } else { // It's a direct Metric
-                  const metric = item;
+                  const metric = item as Metric;
                   const unit = metric.unit || metricUnits[metric.mqtt_param] || '';
                   const metricTitle = language === 'zh' ? t(metric.display_name_tc || metric.display_name) : t(metric.display_name);
+                  const metricKey = createMetricKey(metric);
                   return (
                     <MetricCard
                       key={itemKey}
                       title={metricTitle}
-                      value={data?.[metric.mqtt_param]?.value?.toFixed(1) ?? 'N/A'}
+                      value={formatMetricValue(data?.[metricKey]?.value)}
                       unit={unit}
-                      status={data?.[metric.mqtt_param]?.status ?? StatusLevel.Ok}
+                      status={data?.[metricKey]?.status ?? StatusLevel.Ok}
                       icon={Icons[metric.icon as keyof typeof Icons] ? React.createElement(Icons[metric.icon as keyof typeof Icons]) : <Icons.PressureIcon />}
-                      onClick={() => handleMetricClick(metricTitle, metric.mqtt_param, unit, metricTitle)}
+                      onClick={() => handleMetricClick(metricTitle, metric, unit, metricTitle)}
                     />
                   );
                 }
@@ -369,6 +389,8 @@ export const Dashboard: React.FC = () => {
           })}
         </div>
       )}
+
+      {user?.role === 'Admin' && <div className="pt-4"><BrokerStatusCard /></div>}
 
       <ChartModal 
         content={chartModalContent} 

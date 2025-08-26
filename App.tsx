@@ -27,6 +27,7 @@ const Ventilation: React.FC = () => {
     const { authenticatedFetch } = useAuth();
     const [fanSets, setFanSets] = useState<FanSet[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isDemoVisible, setIsDemoVisible] = useState(false);
 
     useEffect(() => {
         const loadFanSets = async () => {
@@ -39,7 +40,6 @@ const Ventilation: React.FC = () => {
     }, [authenticatedFetch]);
 
     const handleFanUpdate = async (id: string, updates: Partial<Omit<FanSet, 'id' | 'name'>>) => {
-        // Optimistic update
         setFanSets(prevFanSets => {
             if (!prevFanSets) return null;
             return prevFanSets.map(fanSet =>
@@ -51,24 +51,49 @@ const Ventilation: React.FC = () => {
             await updateFanSet(id, updates, { authenticatedFetch });
         } catch (error) {
             console.error("Failed to update fan set:", error);
-            // Revert state on error
             const data = await fetchFanSets({ authenticatedFetch });
             setFanSets(data);
         }
     };
 
-    if (isLoading || !fanSets) {
+    if (isLoading) {
         return <div className="flex justify-center items-center h-64"><SpinnerIcon className="h-10 w-10 text-brand-accent animate-spin" /></div>;
+    }
+
+    if (!isDemoVisible) {
+        return (
+            <div className="text-center p-8 bg-white dark:bg-brand-dark-light rounded-lg shadow-lg">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-brand-text">{t('no_devices_detected_demo')}</h3>
+                <button 
+                    onClick={() => setIsDemoVisible(true)}
+                    className="mt-4 px-4 py-2 bg-brand-accent text-white font-semibold rounded-lg shadow-md hover:bg-brand-accent-light transition-colors"
+                >
+                    {t('view_demo_button')}
+                </button>
+            </div>
+        )
     }
 
     return (
         <div className="space-y-8">
+            <div className="p-4 bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-yellow-500 dark:border-yellow-400 rounded-r-lg">
+                <div className="flex">
+                    <div className="flex-shrink-0">
+                        <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500 dark:text-yellow-300" aria-hidden="true" />
+                    </div>
+                    <div className="ml-3">
+                        <p className="text-sm text-yellow-700 dark:text-yellow-200">
+                            {t('controls_demo_warning')}
+                        </p>
+                    </div>
+                </div>
+            </div>
             <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-brand-text mb-4 border-b border-gray-200 dark:border-brand-dark-lightest pb-2">
                     {t('fan_set_control')}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                    {fanSets.map(fs => (
+                    {fanSets?.map(fs => (
                         <FanControlCard key={fs.id} fanSet={fs} onUpdate={handleFanUpdate} />
                     ))}
                 </div>
@@ -82,6 +107,7 @@ const Lighting: React.FC = () => {
     const { authenticatedFetch } = useAuth();
     const [lightingState, setLightingState] = useState<LightingState | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [isDemoVisible, setIsDemoVisible] = useState(false);
 
     useEffect(() => {
         const loadState = async () => {
@@ -96,7 +122,6 @@ const Lighting: React.FC = () => {
     const handleUpdate = async (updates: Partial<LightingState>) => {
         if (!lightingState) return;
         
-        // Optimistic update
         const newState = { ...lightingState, ...updates };
         setLightingState(newState);
 
@@ -104,29 +129,54 @@ const Lighting: React.FC = () => {
             await updateLightingState(updates, { authenticatedFetch });
         } catch (error) {
             console.error("Failed to update lighting:", error);
-            // Revert on error
             const data = await fetchLightingState({ authenticatedFetch });
             setLightingState(data);
         }
     };
 
-    if (isLoading || !lightingState) {
+    if (isLoading) {
         return <div className="flex justify-center items-center h-64"><SpinnerIcon className="h-10 w-10 text-brand-accent animate-spin" /></div>;
+    }
+
+    if (!isDemoVisible) {
+        return (
+            <div className="text-center p-8 bg-white dark:bg-brand-dark-light rounded-lg shadow-lg">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-brand-text">{t('no_devices_detected_demo')}</h3>
+                <button 
+                    onClick={() => setIsDemoVisible(true)}
+                    className="mt-4 px-4 py-2 bg-brand-accent text-white font-semibold rounded-lg shadow-md hover:bg-brand-accent-light transition-colors"
+                >
+                    {t('view_demo_button')}
+                </button>
+            </div>
+        )
     }
 
     return (
         <div className="space-y-8">
+            <div className="p-4 bg-yellow-100 dark:bg-yellow-900/30 border-l-4 border-yellow-500 dark:border-yellow-400 rounded-r-lg">
+                <div className="flex">
+                    <div className="flex-shrink-0">
+                        <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500 dark:text-yellow-300" aria-hidden="true" />
+                    </div>
+                    <div className="ml-3">
+                        <p className="text-sm text-yellow-700 dark:text-yellow-200">
+                            {t('controls_demo_warning')}
+                        </p>
+                    </div>
+                </div>
+            </div>
             <div>
                 <h2 className="text-xl font-bold text-gray-900 dark:text-brand-text mb-4 border-b border-gray-200 dark:border-brand-dark-lightest pb-2">
                     {t('lighting_control')}
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                   <LightingControlCard 
+                   {lightingState && <LightingControlCard 
                         lightsOn={lightingState.lights_on}
                         onPowerToggle={() => handleUpdate({ lights_on: !lightingState.lights_on })}
                         brightness={lightingState.brightness}
                         onBrightnessChange={(val) => handleUpdate({ brightness: val })}
-                   />
+                   />}
                 </div>
             </div>
         </div>

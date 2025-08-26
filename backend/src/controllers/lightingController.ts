@@ -8,8 +8,8 @@ export const getLightingState = (req: Request, res: Response) => {
       res.status(500).json({ message: 'Error fetching lighting state', error: err.message });
     } else if (!row) {
       // Initialize if not found
-      const defaultState = { lightsOn: false, brightness: 0 };
-      db.run('INSERT INTO lighting_state (lightsOn, brightness) VALUES (?, ?)', [defaultState.lightsOn, defaultState.brightness], (err) => {
+      const defaultState = { lights_on: false, brightness: 0 };
+      db.run('INSERT INTO lighting_state (lights_on, brightness) VALUES (?, ?)', [defaultState.lights_on, defaultState.brightness], (err) => {
         if (err) {
           res.status(500).json({ message: 'Error initializing lighting state', error: err.message });
         } else {

@@ -22,6 +22,7 @@ client.on('connect', () => {
         const value = Math.random() * (metric.max - metric.min) + metric.min;
         
         const topic = 'air-dome/data'; // All data goes to one topic
+        //const topic = 'test';
         
         // New payload format
         const messagePayload = {

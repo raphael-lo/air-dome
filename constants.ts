@@ -14,12 +14,12 @@ export const SITES: Site[] = [
 export const NAV_ITEMS: { id: View; icon: React.FC<React.SVGProps<SVGSVGElement>>; allowedRoles?: string[] }[] = [
   { id: 'dashboard', icon: DashboardIcon },
   { id: 'alerts', icon: AlertIcon },
-  { id: 'ventilation', icon: FanIcon },
-  { id: 'lighting', icon: BulbIcon },
-  { id: 'emergency', icon: ShutdownIcon },
+  { id: 'ventilation', icon: FanIcon, allowedRoles: ['Admin', 'Operator'] },
+  { id: 'lighting', icon: BulbIcon, allowedRoles: ['Admin', 'Operator'] },
+  { id: 'emergency', icon: ShutdownIcon, allowedRoles: ['Admin', 'Operator'] },
   { id: 'reports', icon: ReportsIcon },
-  { id: 'users', icon: UsersIcon },
-  { id: 'metrics', icon: ChartBarIcon },
+  { id: 'users', icon: UsersIcon, allowedRoles: ['Admin'] },
+  { id: 'metrics', icon: ChartBarIcon, allowedRoles: ['Admin'] },
   { id: 'settings', icon: SettingsIcon },
   { id: 'alert_settings', icon: SettingAlertIcon, allowedRoles: ['Admin'] },
 ];
@@ -68,6 +68,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'invalid_credentials': 'Invalid username or password.',
     'dont_have_account': "Don't have an account?",
     'register_now': 'Register now',
+    'mqtt_connected_clients': 'Connected MQTT Clients',
 
 
     // Sites
@@ -85,6 +86,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'settings': 'Settings',
     'users': 'Users',
     'metrics': 'Metrics',
+    'metric_groups': 'Metric Groups',
+    'sections': 'Sections',
     
     // Paired Parameters
     'pressure': 'Pressure',
@@ -202,6 +205,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // User Management
     'user_management': 'User Management',
     'add_user': 'Add User',
+    'add_metric': 'Add Metric',
+    'add_group': 'Add Group',
+    'add_section': 'Add Section',
     'create_user': 'Create User',
     'new_user': 'New User',
     'role': 'Role',
@@ -226,9 +232,14 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'leave_blank_to_keep_same': 'Leave blank to keep same',
     'access_denied': 'Access Denied',
     'no_permission_user_management': 'You do not have permission to access user management.',
+    'alert_settings': 'Alert Settings',
+    'current_alert_thresholds': 'Current Alert Thresholds',
     'dome_metrics': 'Dome Metrics',
     'new_dome_metrics': 'New Dome Metrics',
     '3_minutes': '3 Minutes',
+    'controls_demo_warning': 'These controls are for demonstration purposes only and are not connected to live hardware.',
+    'no_devices_detected_demo': 'There are no devices detected. To check the demo, click the demo button below.',
+    'view_demo_button': 'View Demo',
   },
   zh: {
     // General
@@ -265,6 +276,7 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'invalid_credentials': '無效的使用者名稱或密碼。',
     'dont_have_account': '沒有帳戶？',
     'register_now': '立即註冊',
+    'mqtt_connected_clients': '已連接的MQTT客戶端',
 
     // Sites
     'site_a': 'Demo 站點',
@@ -281,6 +293,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'settings': '設置',
     'users': '使用者管理',
     'metrics': '指標管理',
+    'metric_groups': '指標群組',
+    'sections': '區段管理',
     
     // Paired Parameters
     'pressure': '壓力',
@@ -412,6 +426,9 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     // User Management
     'user_management': '使用者管理',
     'add_user': '新增使用者',
+    'add_metric': '新增指標',
+    'add_group': '新增群組',
+    'add_section': '新增區段',
     'create_user': '建立使用者',
     'new_user': '新使用者',
     'role': '角色',
@@ -476,5 +493,8 @@ export const TRANSLATIONS: Record<Language, Record<string, string>> = {
     'dome_metrics': '氣膜館指標',
     'new_dome_metrics': '新氣膜館指標',
     '3_minutes': '3分鐘',
+    'controls_demo_warning': '這些控制項僅用於演示目的，未連接到實際硬體。',
+    'no_devices_detected_demo': '未檢測到任何設備。要查看演示，請點擊下方的演示按鈕。',
+    'view_demo_button': '查看演示',
   },
 };

@@ -15,8 +15,9 @@ import metricRouter from './routes/metric';
 import metricGroupRouter from './routes/metricGroup';
 import sectionRouter from './routes/section';
 import domeMetricsRouter from './routes/domeMetrics';
+import statsRouter from './routes/stats'; // Add this line
 import './services/databaseService';
-import { initializeDatabase } from '../init_db';
+import { initializeDatabase } from './init_db';
 import { initializeWebSocket } from './services/websocketService';
 import { authenticateToken } from './middleware/auth';
 
@@ -52,6 +53,7 @@ const main = async () => {
   app.use('/api', authenticateToken, fanControlRouter);
   app.use('/api', authenticateToken, lightingControlRouter);
   app.use('/api', authenticateToken, alertThresholdsRouter);
+  app.use('/api', authenticateToken, statsRouter); // Add this line
   app.use('/api', metricRouter);
   app.use('/api', metricGroupRouter);
   app.use('/api', sectionRouter);

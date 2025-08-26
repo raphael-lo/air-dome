@@ -21,7 +21,7 @@ services:
     environment:
       - PORT=3001 # Keep non-sensitive fixed values
     volumes:
-      - air_dome_db_data:/usr/src/app # Mount the SQLite database directory
+      - air_dome_db_data:/usr/src/app/data # Mount the SQLite database directory
     command: npm start
 
   influxdb:
@@ -32,7 +32,13 @@ services:
     volumes:
       - influxdb_data:/var/lib/influxdb2
     env_file:
-      - ./.env # Reference the .env file for InfluxDB init variables
+      - ./.env # Reference the .env file for backend and MQTT
+    environment:
+      - DOCKER_INFLUXDB_INIT_USERNAME=${DOCKER_INFLUXDB_INIT_USERNAME}
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${DOCKER_INFLUXDB_INIT_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=${DOCKER_INFLUXDB_INIT_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${DOCKER_INFLUXDB_INIT_BUCKET}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${DOCKER_INFLUXDB_INIT_ADMIN_TOKEN}
     networks:
       - air-dome-net
 

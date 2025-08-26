@@ -1,7 +1,6 @@
-
 import { Request, Response } from 'express';
 import db from '../services/databaseService';
-import { Metric } from '../models/metric'; // Added this line
+import { Metric } from '../types';
 
 interface SectionItem {
   item_id: number;
@@ -70,17 +69,20 @@ export const getDomeMetricsStructure = (req: Request, res: Response) => {
         mg.metric2_display_name AS metric2_group_display_name, -- Changed alias
         mg.metric2_display_name_tc AS metric2_group_display_name_tc, -- Added
         m.id AS metric_id,
+        m.topic AS topic,
         m.mqtt_param,
         m.display_name,
         m.display_name_tc AS metric_display_name_tc, -- Added
         m.device_id,
         m.icon AS metric_icon,
         m.unit AS metric_unit, -- Added
+        m1.topic AS metric1_topic,
         m1.display_name AS metric1_display_name,
         m1.mqtt_param AS metric1_mqtt_param,
         m1.device_id AS metric1_device_id,
         m1.icon AS metric1_icon,
         m1.unit AS metric1_unit, -- Added
+        m2.topic AS metric2_topic,
         m2.display_name AS metric2_display_name,
         m2.mqtt_param AS metric2_mqtt_param,
         m2.device_id AS metric2_device_id,
@@ -129,6 +131,7 @@ export const getDomeMetricsStructure = (req: Request, res: Response) => {
           // Direct Metric
           currentSection.items.push({
             id: row.metric_id,
+            topic: row.topic,
             mqtt_param: row.mqtt_param,
             display_name: row.display_name,
             display_name_tc: row.metric_display_name_tc, // Added
@@ -162,6 +165,7 @@ export const getDomeMetricsStructure = (req: Request, res: Response) => {
             if (row.metric1_id && row.metric1_display_name) {
               newMetricGroup.metric1Data = {
                 id: row.metric1_id,
+                topic: row.metric1_topic,
                 mqtt_param: row.metric1_mqtt_param,
                 device_param: row.metric1_device_id, // Added
                 display_name: row.metric1_display_name,
@@ -173,6 +177,7 @@ export const getDomeMetricsStructure = (req: Request, res: Response) => {
             if (row.metric2_id && row.metric2_display_name) {
               newMetricGroup.metric2Data = {
                 id: row.metric2_id,
+                topic: row.metric2_topic,
                 mqtt_param: row.metric2_mqtt_param,
                 device_param: row.metric2_device_id, // Added
                 display_name: row.metric2_display_name,
@@ -189,6 +194,7 @@ export const getDomeMetricsStructure = (req: Request, res: Response) => {
           if (row.metric_id) {
             currentMetricGroup.metrics.push({
               id: row.metric_id,
+              topic: row.topic,
               mqtt_param: row.mqtt_param,
               device_param: row.device_id, // Added
               display_name: row.display_name,
@@ -226,7 +232,7 @@ export const getDomeMetricsStructure = (req: Request, res: Response) => {
       });
       section.items.forEach(item => {
         if ('metrics' in item) { // If it's a MetricGroup
-          item.metrics.sort((a, b) => a.id - b.id); // Sort metrics within group
+          item.metrics.sort((a: Metric, b: Metric) => (a.id ?? 0) - (b.id ?? 0)); // Sort metrics within group
         }
       });
     });

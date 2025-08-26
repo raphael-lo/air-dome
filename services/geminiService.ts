@@ -165,6 +165,8 @@ export const createMetric = async (metricData: Omit<Metric, 'id'>, { authenticat
     body: JSON.stringify(metricData),
   });
   if (!response.ok) throw new Error('Failed to create metric');
+  // Trigger backend to reload metric rules
+  await authenticatedFetch(`${BASE_URL}/config/reload`, { method: 'POST' });
   return response.json();
 };
 
@@ -175,6 +177,8 @@ export const updateMetric = async (metricId: number, metricData: Partial<Omit<Me
     body: JSON.stringify(metricData),
   });
   if (!response.ok) throw new Error('Failed to update metric');
+  // Trigger backend to reload metric rules
+  await authenticatedFetch(`${BASE_URL}/config/reload`, { method: 'POST' });
   return response.json();
 };
 
@@ -299,4 +303,10 @@ export const updateSectionItems = async (sectionId: number, items: SectionItem[]
     body: JSON.stringify(items),
   });
   if (!response.ok) throw new Error('Failed to update section item order');
+};
+
+export const fetchBrokerStats = async ({ authenticatedFetch }: AuthenticatedFetch): Promise<{ connectedClients: number }> => {
+  const response = await authenticatedFetch(`${BASE_URL}/stats`);
+  if (!response.ok) throw new Error('Failed to fetch broker stats');
+  return response.json();
 };

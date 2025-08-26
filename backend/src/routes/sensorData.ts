@@ -66,7 +66,16 @@ router.get('/sensor-data/history', authenticateToken, async (req: Request, res: 
     if (!measurement || !field) {
       return res.status(400).json({ message: 'Measurement and field are required.' });
     }
-    const data = await queryHistoricalData(measurement as string, field as string, range as string);
+
+    let data;
+    const fieldStr = field as string;
+    if (fieldStr.includes(':')) {
+        const [topic, device_id, mqtt_param] = fieldStr.split(':');
+        data = await queryHistoricalData(measurement as string, mqtt_param, range as string, topic, device_id);
+    } else {
+        data = await queryHistoricalData(measurement as string, field as string, range as string);
+    }
+
     res.json(data);
   } catch (error) {
     res.status(500).json({ message: 'Error getting historical sensor data', error });

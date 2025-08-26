@@ -8,6 +8,9 @@ RUN npm ci
 
 COPY . .
 
+# Debugging step: Print the contents of init.sql to the build log
+RUN echo "--- DEBUG: Contents of init.sql ---" && cat src/config/init.sql && echo "--- END DEBUG ---"
+
 RUN npm run build
 
 FROM node:18-alpine AS runner

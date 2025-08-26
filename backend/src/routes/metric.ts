@@ -5,7 +5,7 @@ import { authenticateToken, authorizeRole } from '../middleware/auth';
 const router = Router();
 
 router.post('/metrics', authenticateToken, authorizeRole(['Admin']), createMetric);
-router.get('/metrics', authenticateToken, authorizeRole(['Admin']), getMetrics);
+router.get('/metrics', authenticateToken, getMetrics);
 router.put('/metrics/:id', authenticateToken, authorizeRole(['Admin']), updateMetric);
 router.delete('/metrics/:id', authenticateToken, authorizeRole(['Admin']), deleteMetric);
 

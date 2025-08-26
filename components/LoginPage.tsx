@@ -6,8 +6,8 @@ import { DomeIcon } from './icons/NavIcons';
 import { SpinnerIcon } from './icons/MetricIcons';
 
 export const LoginPage: React.FC = () => {
-    const [username, setUsername] = useState('admin');
-    const [password, setPassword] = useState('password');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     
@@ -27,16 +27,19 @@ export const LoginPage: React.FC = () => {
         }
     };
     
-    // Ensure the dark class is on the html element for the login page
+    // Force light theme on the login page for brand consistency
     React.useEffect(() => {
-      document.documentElement.classList.toggle('dark', theme === 'dark');
-    }, [theme]);
+      document.documentElement.classList.remove('dark');
+    }, []);
 
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-50 dark:bg-brand-dark-light font-sans">
             <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-brand-dark rounded-xl shadow-2xl">
                 <div className="text-center">
-                    <DomeIcon className="w-20 h-20 mx-auto text-brand-accent" />
+                    <div className="flex items-center justify-center space-x-4">
+                        <img src="https://yotatech.com.hk/wp-content/uploads/2024/11/yota-tech-LOGO-13.png" alt="Yota Tech Logo" className="h-12 w-auto" />
+                        {/* <DomeIcon className="w-20 h-20 text-brand-accent" /> */}
+                    </div>
                     <h1 className="mt-4 text-3xl font-extrabold text-gray-900 dark:text-brand-text">
                         {t('app_title')}
                     </h1>

@@ -86,7 +86,6 @@ function largestTriangleThreeBuckets(data: [number, number][], threshold: number
 }
 
 export const MetricChart: React.FC<MetricChartProps> = ({
-  titleKey,
   unit,
   internalField,
   externalField,
@@ -96,7 +95,6 @@ export const MetricChart: React.FC<MetricChartProps> = ({
   externalUnit,
   authenticatedFetch,
   site,
-  currentData,
 }) => {
   const { theme, t, language } = useAppContext();
   const [selectedPeriod, setSelectedPeriod] = useState<string>('-24h');
@@ -104,6 +102,14 @@ export const MetricChart: React.FC<MetricChartProps> = ({
   const [seriesData, setSeriesData] = useState<{ nameKey: string; label: string; unit: string; history: [number, number][] }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hoveredPoint, setHoveredPoint] = useState<{ x: number; y: number; value: number; label: string; unit: string } | null>(null);
+
+  // Helper to safely format numbers
+  const safeToFixed = (num: any, digits: number) => {
+    if (typeof num === 'number' && isFinite(num)) {
+      return num.toFixed(digits);
+    }
+    return 'N/A';
+  };
 
   const timePeriods = [
     { label: t('3_minutes'), value: '-3m' },
@@ -127,7 +133,7 @@ export const MetricChart: React.FC<MetricChartProps> = ({
             throw new Error(`HTTP error! status: ${response.status}`);
           }
           const history = await response.json();
-          const formattedHistory: [number, number][] = history.filter(p => p && p._value !== null && p._time).map((p: any) => [new Date(p._time).getTime(), p._value]);
+          const formattedHistory: [number, number][] = history.filter(p => p && typeof p._value === 'number' && p._time).map((p: any) => [new Date(p._time).getTime(), p._value]);
           fetchedSeries.push({ nameKey, label, unit: seriesUnit, history: formattedHistory });
         } catch (error) {
           console.error(`Error fetching historical data for ${field}:`, error);
@@ -227,7 +233,7 @@ export const MetricChart: React.FC<MetricChartProps> = ({
   });
 
   return (
-    <div className="flex flex-col items-center relative" ref={chartContainerRef}>
+    <div className="flex flex-col items-center relative w-full" ref={chartContainerRef}>
       <div className="relative inline-block text-left mb-4">
         <select
           value={selectedPeriod}
@@ -244,12 +250,12 @@ export const MetricChart: React.FC<MetricChartProps> = ({
           <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
         </div>
       </div>
-      <svg width="250%" viewBox={`0 0 ${width} ${height}`} aria-label={`Chart of historical data.`}>
+      <svg width="100%" viewBox={`0 0 ${width} ${height}`} aria-label={`Chart of historical data.`}>
         {yAxisLabels.map(({ value, yPos }, i) => (
           <g key={`y-axis-${i}`}>
             <line x1={padding} y1={yPos} x2={width - padding} y2={yPos} stroke={gridColor} strokeDasharray="2,2" />
             <text x={padding - 8} y={yPos + 4} fill={textColor} textAnchor="end" fontSize="10">
-              {value.toFixed(yRange < 10 ? 1 : 0)}
+              {safeToFixed(value, yRange < 10 ? 1 : 0)}
             </text>
           </g>
         ))}
@@ -264,7 +270,7 @@ export const MetricChart: React.FC<MetricChartProps> = ({
                 if (point === null) return '';
                 const x = xToSvg(point[0]);
                 const y = yToSvg(point[1]);
-                return `${i === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+                return `${i === 0 ? 'M' : 'L'} ${safeToFixed(x, 2)} ${safeToFixed(y, 2)}`;
               })
               .join(' ');
           
@@ -314,7 +320,7 @@ export const MetricChart: React.FC<MetricChartProps> = ({
             boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
           }}
         >
-          {hoveredPoint.label}: {hoveredPoint.value.toFixed(2)} {hoveredPoint.unit}
+          {hoveredPoint.label}: {safeToFixed(hoveredPoint.value, 2)} {hoveredPoint.unit}
         </div>
       )}
     </div>

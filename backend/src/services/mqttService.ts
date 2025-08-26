@@ -5,9 +5,17 @@ import db from './databaseService';
 import { v4 as uuidv4 } from 'uuid';
 import { StatusLevel, type AlertThreshold, type Metric } from '../types';
 
-// --- In-memory cache for metric rules ---
+// --- In-memory cache for metric rules and stats ---
 type MetricRule = Metric & { topic: string };
 let metricRules: MetricRule[] = [];
+let alertThresholds: AlertThreshold[] = [];
+let lastMetricStatus: Record<string, StatusLevel> = {};
+let connectedClients = 0;
+
+// Export stats for other modules to access
+export const getStats = () => ({
+  connectedClients,
+});
 
 const severityOrder = {
   [StatusLevel.Ok]: 0,
@@ -27,7 +35,7 @@ const getStatusForMetric = (value: number, threshold: AlertThreshold | undefined
   return StatusLevel.Ok;
 };
 
-const createAlert = (metric: Metric, severity: StatusLevel, value: number, unit?: string) => {
+const createAlert = (metric: Metric, severity: StatusLevel, value: number, unit?: string | null) => {
     const newAlert = {
         id: uuidv4(),
         site_id: '1', // Assuming a single site for now
@@ -68,12 +76,32 @@ const processMetric = (metricRule: MetricRule, value: any, timestamp: string) =>
     }
 
     // Write to InfluxDB using the unique device_id from the rule
-    writeMetric('sensor_data', metricRule.mqtt_param, value, { device_id: metricRule.device_id });
+    writeMetric('sensor_data', metricRule.mqtt_param, value, { device_id: metricRule.device_id, topic: metricRule.topic });
 
-    // Alerting logic remains similar, but uses the metricRule directly
-    // (Further logic for fetching thresholds based on the new rule structure would be needed here)
-    // For now, we broadcast the data for real-time UI updates
-    broadcast({ [metricRule.mqtt_param]: { value, status: StatusLevel.Ok, device_id: metricRule.device_id }, timestamp });
+    // Check for alert conditions
+    const threshold = alertThresholds.find(t => t.metric_id === metricRule.id);
+    const status = getStatusForMetric(value, threshold);
+    const metricKey = `${metricRule.topic}:${metricRule.device_id}:${metricRule.mqtt_param}`;
+    const lastStatus = lastMetricStatus[metricKey] || StatusLevel.Ok;
+
+    console.log(`Metric: ${metricKey}, Value: ${value}, Status: ${status}, Last Status: ${lastStatus}, Create Alert: ${severityOrder[status] > severityOrder[lastStatus]}`);
+
+    if (severityOrder[status] > severityOrder[lastStatus]) {
+        createAlert(metricRule, status, value, metricRule.unit);
+    }
+
+    lastMetricStatus[metricKey] = status;
+
+
+    // Broadcast the data for real-time UI updates
+    broadcast({
+        topic: metricRule.topic,
+        device_id: metricRule.device_id,
+        mqtt_param: metricRule.mqtt_param,
+        value,
+        status,
+        timestamp
+    });
 }
 
 const loadMetricRules = (): Promise<void> => {
@@ -85,6 +113,20 @@ const loadMetricRules = (): Promise<void> => {
       }
       metricRules = fetchedMetrics;
       console.log(`Loaded ${metricRules.length} metric rules into memory.`);
+      resolve();
+    });
+  });
+};
+
+const loadAlertThresholds = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM alert_thresholds', [], (err, fetchedThresholds: AlertThreshold[]) => {
+      if (err) {
+        console.error('Failed to fetch alert thresholds:', err);
+        return reject(err);
+      }
+      alertThresholds = fetchedThresholds;
+      console.log(`Loaded ${alertThresholds.length} alert thresholds into memory.`);
       resolve();
     });
   });
@@ -106,11 +148,18 @@ export const mqttClient = mqtt.connect(MQTT_BROKER_URL, {
 mqttClient.on('connect', async () => {
   try {
     await loadMetricRules();
+    await loadAlertThresholds();
 
     // Subscribe to all topics. The logic will now be handled by our rule matcher.
     mqttClient.subscribe('#', (err) => {
       if (err) console.error('Failed to subscribe to #', err);
       else console.log('Subscribed to all topics (#) to process messages based on loaded rules.');
+    });
+
+    // Subscribe to system topics for stats
+    const SYS_TOPIC_CLIENTS_CONNECTED = '$SYS/broker/clients/connected';
+    mqttClient.subscribe(SYS_TOPIC_CLIENTS_CONNECTED, (err) => {
+        if (err) console.error(`Failed to subscribe to ${SYS_TOPIC_CLIENTS_CONNECTED}`)
     });
 
     // Listen for a special topic to reload rules without restarting the backend
@@ -120,6 +169,12 @@ mqttClient.on('connect', async () => {
     });
 
     mqttClient.on('message', (topic, message) => {
+      // Update stats
+      if (topic === SYS_TOPIC_CLIENTS_CONNECTED) {
+        connectedClients = parseInt(message.toString(), 10);
+        return; // No further processing needed
+      }
+
       let payload;
       const messageString = message.toString();
 
@@ -132,12 +187,13 @@ mqttClient.on('connect', async () => {
 
       try {
         if (topic === RELOAD_RULES_TOPIC) {
-            console.log('Reloading metric rules from database...');
+            console.log('API triggered rule reload. Reloading metric rules from database...');
             loadMetricRules();
+            loadAlertThresholds();
             return;
         }
 
-        const timestamp = payload.timestamp ? new Date(parseInt(payload.timestamp)).toISOString() : new Date().toISOString();
+        const timestamp = new Date(Date.now()).toISOString();
 
         // Flexible matching logic
         const matchedRules = metricRules.filter(rule => {

@@ -119,7 +119,7 @@ export interface Section {
   id?: number;
   name: string;
   name_tc?: string;
-  item_order: number;
+  item_order: number | null;
 }
 
 export interface SectionItem {
